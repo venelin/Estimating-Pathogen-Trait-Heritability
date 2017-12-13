@@ -1,0 +1,1897 @@
+---
+title: "Generation of Main Text and Supplementary Figures"
+author: "Venelin Mitov"
+date: "11 December 2017"
+output: pdf_document
+---
+
+========================================================
+
+This script generates all figures in the main text as well as supplementary figures. The script contains chunks named as the names of the corresponding
+figures. 
+
+Before executing other chunks in the script, execute the following commands manually:
+```{r execute-script, eval=TRUE}
+library(knitr)
+library(rmarkdown)
+# change the following path accordingly:
+#setwd("~/SP")
+
+# You can generate all figures at once by the following command:
+#render('GenerateFigures.Rmd', output_format='pdf_document', clean=FALSE)
+```
+
+```{r setup, include=FALSE}
+library(toyepidemic)
+library(patherit)
+library(POUMM)
+library(benchtable)
+library(xtable)
+library(knitr)
+library(ggplot2)
+source('PlotTools.R')
+
+opts_chunk$set(dev='pdf', 
+               results="hide",
+               warning=FALSE,
+               dev.args=list(
+                 family="ArialMT", 
+                 pointsize=10,
+                 colormodel='cmyk'
+               ),
+               dpi=350, bg='white')
+
+setParCex <- function(){
+  # we need cex.axis and cex.lab to be big w.r.t. to cex, otherise the labels are spaced differently on the x and y axis.
+  # thus, we use factor
+  factor <- 2
+  par(cex=1/factor)
+  par(cex.axis=0.9*factor)
+  par(cex.lab=0.95*factor)
+  par(cex.main=1.1*factor)
+  par(tcl=-0.5)
+  par(mgp=c(1.8, .6, 0)*factor)
+  
+  # avoid bold titles
+  par(font.main=1)
+}
+
+options(scipen=5, digits=6)
+
+```
+
+# Toy Model
+
+## Load rate functions from the ToyModelSetup script
+```{r, include=FALSE}
+source('ToyModelSetup.R')
+```
+## Load h2statsAll table
+```{r, echo=FALSE}
+if(file.exists('DATA/ToyModelSIR/h2statsAll.RData')) {
+  load('DATA/ToyModelSIR/h2statsAll.RData')
+} else {
+  stop("Check that the file h2statsAll.RData is in the DATA/ToyModelSIR/ directory.")
+}
+```
+
+
+## Fig 2: Plot trait-value distribution
+```{r plot-random-distribution, eval=TRUE, fig.width=.88, fig.height=1}
+size <- 2e6
+par(mfrow=c(1, 1))
+setParCex()
+par(mai=c(0.22, 0.3, 0.05, 0.05))
+
+par(lwd=.7)
+
+probstrain <- c(0.46, 0.43, 0.73, 0.12, 0.56, 0.24) #runif(6)
+typestrain <- cbind(type=sample(1:2, size=size, replace=TRUE), strain=sample(1:6, size=size, replace=TRUE, probstrain))
+values <- as.data.table(cbind(typestrain, v=GEVs[typestrain[,1:2]]+rnorm(size, 0, .6)))
+
+values[, plot(density(v), xlab=expression(z), ylab='Density', xlim=c(0,6), ylim=c(0, 0.8), main='', frame.plot=FALSE)]
+cols <- c('magenta', 3:6, 'brown')
+
+values[, {dens <- density(v); dens$y <- dens$y*length(v)/size; lines(dens, col=cols[unique(strain)], lty=unique(type), xlab=expression(z));}, by=list(type, strain)]
+
+plot(density(rnorm(size, 0, 0.6)), xlim=c(-3, 3), ylim=c(0, 0.8), xlab='e', main='', frame.plot=FALSE)
+```
+
+## Fig 2: Plot toy-model dynamics
+```{r Fig2C-F, echo=FALSE, eval=TRUE, fig.width=3.72, fig.height=3.72}
+par(mfcol=c(2, 2))
+setParCex()
+
+par(cex.lab=0.91*2)
+par(mgp=c(1.5, .6, 0)*2)
+
+par(mai=c(0.36, 0.44, 0.2, 0.12))
+
+par(lwd=.7)
+
+
+transform <- function(x) calcValue(env=1, gene=1, x, matrix(0, 1, 1))
+
+valuesNeutral <- c(2.01, 2.01, 2.01, 2.01, 4.78, 3.27, 2.76, 3.27, 3.27, 4.78, 3.27, 2.76, 4.78, 3.27, 2.76, 2.76, 2.76, 4.78, 2.01, 4.78, 4.78, 2.01, 4.78, 2.01, 3.27, 4.78, 4.78, 4.78, 2.01, 3.27, 3.27, 3.27, 4.78, 2.76, 3.27, 3.27, 2.76, 4.78, 3.27, 3.27, 4.78, 2.01, 3.27, 4.78, 4.78, 3.27, 2.76, 2.01, 2.01, 4.78, 4.78, 3.27, 2.76, 4.78, 2.01, 2.01, 2.01, 2.01, 4.78, 2.01, 4.78, 3.27, 4.78, 4.78, 2.01, 2.76, 2.76, 2.76, 2.76, 2.76, 2.01, 2.01, 2.76, 2.01, 2.76, 4.78, 3.27, 2.01, 2.01, 2.01, 2.76, 3.27, 4.78, 2.01, 4.78, 3.27, 3.27, 4.78, 2.01, 2.76, 4.78, 2.76, 3.27, 4.78, 3.27, 2.01, 2.76, 4.78, 3.27, 2.76, 2.01, 3.27, 4.78, 2.76, 3.27, 2.76, 4.78, 4.78, 4.78, 2.01, 2.76, 3.27, 4.78, 2.76, 2.76, 2.01, 2.01, 2.76, 2.01, 2.01, 2.76, 2.76, 3.27, 4.78, 4.78, 2.76, 4.78, 4.78, 2.01, 3.27, 3.27, 2.01, 2.76, 2.01, 2.76, 2.76, 2.76, 4.78, 4.78, 2.01, 3.27, 2.01, 3.27, 4.78, 4.78, 3.27, 2.01, 3.27, 2.76, 2.76, 2.76, 2.01, 2.76, 4.78, 3.27, 4.78, 2.76, 2.76, 2.01, 4.78, 4.78, 4.78, 2.76, 3.27, 4.78, 4.78, 2.01, 2.76, 4.78, 2.76, 3.27, 2.76, 2.01, 2.01, 3.27, 2.01, 3.27, 2.01, 2.76, 3.27, 3.27, 2.01, 2.76, 2.76, 2.01, 2.76, 3.27, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01, 2.01)
+
+valuesSelect <- c(1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 1.77, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 2.03, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 4.19, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59, 5.59)
+curve(valuesSelect[round(x)+1], from=0, to=200, col='magenta', 
+      main='', xlab="Time", 
+      ylab=expression(paste('Trait value (', z, ')')),
+      xlim=c(0, 200), ylim=c(0, 6))
+curve(valuesNeutral[round(x/10)+1], from=0, to=200, add=TRUE)
+grid()
+mtext("C", font=2, side=3, at=-70, cex=1.1, line=.4)
+
+# Mutation rate
+curve(rateMutate(matrix(0, 1,1), x, envs=1, genes=1), from=0, to=6, col='magenta', 
+      main='',
+      xlab=expression(paste('Trait value (', z, ')')),  
+      ylab=expression(paste("Mutation rate (", nu, ")")))
+curve(meanRateMutate(matrix(0, 1,1), x, envs=1, genes=rep(1, length(x))), from=0, to=6, add=TRUE)
+grid()
+mtext("D", font=2, side=3, at=-2.05, cex=1.1, line=.4)
+
+# Between-host parameters:
+## transmission probability per risky contact
+curve(rateInfect(transform(x), rateContact=1), from=0, to=6, ylim=c(0, .8),
+      main="", 
+      xlab=expression(paste('Trait value (', z, ")")), 
+      ylab=expression(paste('Transm. prob. (', gamma, ")")), 
+      col='magenta')
+curve(meanRateInfect(transform(x), rateContact=1), from=0, to=6, 
+      add=TRUE)
+grid()
+mtext("E", font=2, side=3, at=-2.05, cex=1.1, line=.4)
+
+# infectious period in the absence of mutation
+curve(1/(rateDie(transform(x), mu=mu)+rateSampleNeutral), from=0, to=6,
+      main="",
+      xlab=expression(paste('Trait value (', z, ")")),
+      ylab=expression(paste("Infectious time (", 1/(delta+rho), ")")),
+      ylim=c(0, 40), col='magenta')
+curve(1/(meanRateDie(transform(x), mu=mu)+rateSampleNeutral), from=0, to=6, add=TRUE)
+# curve(rateDie(transform(x), mu=mu)+rateSampleNeutral, from=0, to=6,
+#       main="",
+#       xlab=expression(paste('Trait value (', z, ")")),
+#       ylab=expression(paste("Removal rate (", delta+rho, ")")),
+#       ylim=c(0, .55), col='magenta')
+# curve(meanRateDie(transform(x), mu=mu)+rateSampleNeutral, from=0, to=6, add=TRUE)
+
+grid()
+mtext("F", font=2, side=3, at=-2.05, cex=1.1, line=.4)
+```
+
+
+## Table summaryToySim: Heritability estimate errors in toy model simulations
+```{r heritability-average-err-latex, eval=TRUE, echo=FALSE, results='asis'}
+load('DATA/ToyModelSIR/h2statsAll.RData')
+tab <- as.matrix(h2statsAll[, list(
+  n=length(id), 
+  b.0=paste0(round(mean(b.0-R2adj, na.rm=TRUE), 2), '(', format(t.test(b.0-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  b.D1=paste0(round(mean(b.D1-R2adj, na.rm=TRUE), 2), '(', format(t.test(b.D1-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  b=paste0(round(mean(b-R2adj, na.rm=TRUE), 2), '(', format(t.test(b-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  rA.id=paste0(round(mean(rA.id-R2adj, na.rm=TRUE), 2), '(', format(t.test(rA.id-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  rA.CPP.D1=paste0(round(mean(rA.CPP.D1-R2adj, na.rm=TRUE), 2), '(', format(t.test(rA.CPP.D1-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  rA.PP=paste0(round(mean(rA.PP-R2adj, na.rm=TRUE), 2), '(', format(t.test(rA.PP-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  rSp.CPP.D1 = paste0(round(mean(rSp.CPP.D1-R2adj, na.rm=TRUE), 2), "(", format(t.test(rSp.CPP.D1)$p.value, scientific = TRUE, digits = 2), ")"),
+  H2.BM=paste0(round(mean(H2.BM.tMean-R2adj, na.rm=TRUE), 2), '(', format(t.test(H2.BM.tMean-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  H2.BMe=paste0(round(mean(H2.BMe-R2adj, na.rm=TRUE), 2), '(', format(t.test(H2.BMe-R2adj)$p.value, scientific=TRUE, digits=2), ')'),
+  H2.OUe=paste0(round(mean(H2.OUe-R2adj, na.rm=TRUE), 2), '(', format(t.test(H2.OUe-R2adj)$p.value, scientific=TRUE, digits=2), ')') ,
+  
+  rA.hat.0=paste0(round(mean(rA.hat.0-R2adj, na.rm=TRUE), 2), '(', format(t.test(rA.hat.0-R2adj)$p.value, scientific=TRUE, digits=2), ')')#,
+  # rA.hat.exp.0=paste0(round(mean(rA.hat.exp.0-R2adj, na.rm=TRUE), 2), '(', format(t.test(rA.hat.0-R2adj)$p.value, scientific=TRUE, digits=2), ')')
+), 
+keyby=process][c(1,2,3,4)]
+)
+
+colnames(tab) <- c("process", "N", "$b[0]$", "$b[D_1\\tau]$", "$b[\\tau]$", "$r_{A}[\\text{id}]$", "$r_{A}[\\text{PP}:D_1\\tau]$", "$r_{A}[\\text{PP}:\\tau]$","$r_{Sp}[\\text{CPP}:D_1\\tau]$", "$H^2_{BM}(t)$", "$H^2_{BMe}(t)$", "$H^2_{OUe}(t)$", "rA.hat.0"
+                   )
+
+xtab <- xtable(tab, display=rep('s', 14), caption="SIR simulations of case 1: mean difference $\\hat{H}^2-H^2$")
+print(xtab, type='latex', comment=FALSE, include.rownames=FALSE, sanitize.text.function=function(x) x, 
+      caption.placement = getOption("xtable.caption.placement", "top"), size='scriptsize')
+```
+
+
+## Fig 4: Plot heritability estimates for each kappa
+```{r prepare-fig4, eval=TRUE, results="hide", echo=FALSE}
+dataBoxPl <- rbindlist(list(
+  h2statsAll[, list(id, process, rateContact, stat="R2adj", value=R2adj)],
+  h2statsAll[, list(id, process, rateContact, stat="rA.id", value=rA.id)],
+  h2statsAll[, list(id, process, rateContact, stat="rA.hat.0", value=rA.hat.0)],
+  #h2statsAll[, list(id, process, rateContact, stat="rA.hat.exp.0", value=rA.hat.exp.0)],
+  h2statsAll[, list(id, process, rateContact, stat="rA.PP", value=rA.PP)],
+  h2statsAll[, list(id, process, rateContact, stat="rA.CPP.D1", value=rA.CPP.D1)],
+  h2statsAll[, list(id, process, rateContact, stat="rSp.CPP.D1", value=rSp.CPP.D1)],
+  h2statsAll[, list(id, process, rateContact, stat="b.0", value=b.0)],
+  h2statsAll[, list(id, process, rateContact, stat="b.D1", value=b.D1)],
+  h2statsAll[, list(id, process, rateContact, stat="b", value=b)],
+  h2statsAll[, list(id, process, rateContact, stat="H2.OU", value=anH2.POUMM.H2tMean)],
+  h2statsAll[, list(id, process, rateContact, stat="H2.OUe", value=anH2.POUMM.H2e)],
+  h2statsAll[, list(id, process, rateContact, stat="H2.BM", value=anH2.PMM.H2tMean)],
+  h2statsAll[, list(id, process, rateContact, stat="H2.BMe", value=anH2.PMM.H2e)]
+  ))
+
+dataBoxPl[, statPretty:=
+            factor(stat, 
+                    levels = c("b.0", "b.D1", "b", "rA.id", 
+                               "rA.hat.0", 
+                               "rA.CPP.D1", "rA.PP", "rSp.CPP.D1",
+                               "H2.BM", "H2.BMe", "H2.OU", "H2.OUe"))]
+
+dataBoxPl[process%in%c("neutral/neutral", "neutral/select"),
+          processWithin:="Within-host: neutral"]
+dataBoxPl[process%in%c("select/neutral", "select/select"),
+          processWithin:="Within-host: select"]
+dataBoxPl[process%in%c("neutral/neutral", "select/neutral"),
+          processBetween:="Between-host: neutral"]
+dataBoxPl[process%in%c("neutral/select", "select/select"),
+          processBetween:="Between-host: select"]
+```
+
+```{r Fig4, echo=FALSE, eval=TRUE, fig.height=7.2, fig.width=7.2}
+ggplot() +
+  geom_boxplot(data=dataBoxPl[stat=="R2adj"], 
+               mapping = aes(x = factor(1/rateContact), y = value, linetype="1"), 
+                             col="black",
+               outlier.size = 0, outlier.colour = "white", 
+               show.legend = NA) +
+  geom_boxplot(data=dataBoxPl[stat != "R2adj"], 
+               mapping = aes(x = factor(1/rateContact), y = value, 
+                             col = statPretty,
+                             fill = statPretty),
+               #col = "black", size=.4,
+               outlier.size = 0, outlier.colour = "white") +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(0, .6), name = expression(paste("Broad-sense heritability (", H^2, ")"))) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  scale_linetype(
+    name = "True value:",
+#    values = 1,
+    labels = expression(H^2==R[adj]^2),
+    guide = guide_legend(keywidth = 2.5, order=1)) +
+
+  scale_color_manual(
+    "Estimators:",
+    values = adjustcolor(c('navy', 'cadetblue4', 'cadetblue3', 
+                           'violetred4', 
+                           "orange", 
+                           'magenta', 'violet', 'blue', 
+                           'darkred', 'brown', 'darkgreen', 'green'), alpha=.6), 
+    labels=expression(b[0], b[D[1]], paste(b, ""), paste(r[A],"[id]"), 
+                      r[list(A,0,lin)], 
+                      r[list(A,D[1])], r[list(A)], r[list(Sp,D[1])], 
+                      paste(H[BM]^2, "(", bar(t), ")"), H[BMe]^2,
+                      paste(H[OU]^2, "(", bar(t), ")"), H[OUe]^2), 
+    guide = guide_legend(ncol = 3, keywidth = .6, order=2)
+    ) +
+  scale_fill_manual(
+    "Estimators:",
+    values = adjustcolor(c('navy', 'cadetblue4', 'cadetblue3', 
+                           'violetred4', 
+                           "orange", 
+                           'magenta', 'violet', 'blue', 
+                           'darkred', 'brown', 'darkgreen', 'green'), alpha=.6), 
+    labels=expression(b[0], b[D[1]], paste(b, ""), paste(r[A],"[id]"), 
+                      r[list(A,0,lin)], 
+                      r[list(A,D[1])], r[list(A)], r[list(Sp,D[1])],
+                      paste(H[BM]^2, "(", bar(t), ")"), H[BMe]^2,
+                      paste(H[OU]^2, "(", bar(t), ")"), H[OUe]^2), 
+    guide = guide_legend(ncol = 3, keywidth = .6, order=2)
+    ) + 
+  theme_bw() +
+  theme(legend.box = "horizontal",
+    legend.position = c(.995, .995), legend.justification = c("right", "top"),
+        legend.text.align = 0)
+```
+
+## Fig S3: tau in the toy-model
+```{r FigS3, echo=FALSE, results="hide", eval=TRUE, fig.height=3.6, fig.width=3.6}
+dataBoxPl <- rbindlist(list(
+  h2statsAll[, list(id, process, rateContact, stat="tau", value=meanTau10k)],
+  h2statsAll[, list(id, process, rateContact, stat="tauD", value=meanTauD10k)],
+  h2statsAll[, list(id, process, rateContact, stat="tauR", value=meanTauR10k)]
+))
+
+dataBoxPl[, statF:=factor(stat, levels = c("tau", "tauD", "tauR"))]
+
+dataBoxPl[process%in%c("neutral/neutral", "neutral/select"),
+          processWithin:="Within-host: neutral"]
+dataBoxPl[process%in%c("select/neutral", "select/select"),
+          processWithin:="Within-host: select"]
+dataBoxPl[process%in%c("neutral/neutral", "select/neutral"),
+          processBetween:="Between-host: neutral"]
+dataBoxPl[process%in%c("neutral/select", "select/select"),
+          processBetween:="Between-host: select"]
+
+
+ggpl_tau <- ggplot() +
+  geom_boxplot(data = dataBoxPl[stat == "tau"], size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value),
+               outlier.size = 0, outlier.color = "grey",
+               show.legend = NA) +
+  facet_grid(processBetween~processWithin) +
+  scale_y_continuous(limits=c(0, 70), name = expression(paste("Measurement delay (", d[ij], ")"))) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  theme_bw()
+ggpl_tau
+```
+
+## Fig S4: Genotypic variance in the toy-model
+```{r prepare-figS4, eval=TRUE, results="hide", echo=FALSE}
+dataBoxPl1 <- rbindlist(list(
+  h2statsAll[, list(id, process, rateContact, stat="var.G", value=var.G)],
+  h2statsAll[, list(id, process, rateContact, stat="var.G0", value=var.G0)],
+  h2statsAll[, list(id, process, rateContact, stat="cov.zD0zR0", value=cov.zD0zR0)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GR0", value=var.GR0)],
+  h2statsAll[, list(id, process, rateContact, stat="cov.zDzR", value=cov.zDzR)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GBM", value=anH2.PMM.sigmaG2tMean)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GBMe", value=varZ-anH2.PMM.sigmae2)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GBMSime", value=corrProfile.PMM.varZ-anH2.PMM.sigmae2)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GOU", value=anH2.POUMM.sigmaG2tMean)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GOUe", value=varZ-anH2.POUMM.sigmae2)],
+  h2statsAll[, list(id, process, rateContact, stat="var.GOUSime", value=corrProfile.POUMM.varZ-anH2.POUMM.sigmae2)]
+  ))
+
+dataBoxPl1[, statPretty:=factor(stat,
+                          levels = c("var.G0",
+                                     "cov.zD0zR0",
+                                     "var.GR0",
+                                     "cov.zDzR",
+                                     "var.GBM", "var.GBMe", "var.GBMSime",
+                                     "var.GOU", "var.GOUe", "var.GOUSime"),
+                          labels = I(
+                            expression(paste(s^2, "(", G[0], ")"), 
+                                       s(z[list(d,0)], z[list(r,0)]),
+                                       paste(s^2, "(", G[list(r,0)], ")"), 
+                                       s(z[d], z[r]),
+                                       paste(sigma[BM]^2, "(", bar(t), ")"),
+                                       paste(sigma[BMe]^2),
+                                       paste(s^2, "(", z[BMsim], ") - ", hat(sigma)[e]),
+                                       paste(sigma[OU]^2, "(", bar(t), ")"),
+                                       paste(sigma[OUe]^2),
+                                       paste(s^2, "(", z[OUsim], ") - ", hat(sigma)[e]))))]
+
+dataBoxPl1[process%in%c("neutral/neutral", "neutral/select"),
+          processWithin:="Within-host: neutral"]
+dataBoxPl1[process%in%c("select/neutral", "select/select"),
+          processWithin:="Within-host: select"]
+dataBoxPl1[process%in%c("neutral/neutral", "select/neutral"),
+          processBetween:="Between-host: neutral"]
+dataBoxPl1[process%in%c("neutral/select", "select/select"),
+          processBetween:="Between-host: select"]
+```
+
+```{r FigS4, echo=FALSE, eval=TRUE, fig.height=7.2, fig.width=7.2}
+pl1 <- ggplot() +
+  geom_boxplot(data=dataBoxPl1[stat=="var.G"], 
+               mapping = aes(x = factor(1/rateContact), y = value, linetype="1"), 
+               col="black",
+               outlier.size = 0, outlier.colour = "white", 
+               show.legend = NA) +
+  geom_boxplot(data=dataBoxPl1[stat != "var.G"], 
+               mapping = aes(x = factor(1/rateContact), y = value, 
+                             col  =statPretty,
+                             fill =statPretty),
+               outlier.size = 0, outlier.colour = "white") +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(0, .6), name = expression(paste("Genotypic variance"))) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  scale_linetype(
+    name = "True value:", 
+    labels = expression(paste({s^2}(G), "")),
+    guide = guide_legend(keywidth = 2.5, order=1)) +
+  scale_color_manual(
+    "Estimators:",
+    values = adjustcolor(c('navy', 'magenta', 'cadetblue4', 
+                           'cadetblue2', 
+                           'red', 'red3', 'brown', 
+                           'darkgreen', 'forestgreen', 'green'), alpha=.6), 
+    labels=expression(paste(s^2, "(", G[0], ")"), 
+                      s(z[list(don,0)], z[list(rcp,0)]),
+                      paste(s^2, "(", G[list(rcp,0)], ")"), 
+                      s(z[don], z[rcp]),
+                      paste(Var[BM], "(", bar(t), "; ", sigma, ")"),
+                      paste(Var[BMe], ""),
+                      paste(s^2, "(", z[BMsim], ") - ", hat(sigma)[e]),
+                      paste(Var[OU], "(", bar(t), "; ", list(alpha,sigma), ")"),
+                      paste(Var[OUe], ""),
+                      paste(s^2, "(", z[OUsim], ") - ", hat(sigma)[e])), 
+    guide = guide_legend(ncol = 2, keywidth = .6, order=2)
+    ) +
+    scale_fill_manual(
+    "Estimators:",
+    values = adjustcolor(c('navy', 'magenta', 'cadetblue4', 
+                           'cadetblue2', 
+                           'red', 'red3', 'brown', 
+                           'darkgreen', 'forestgreen', 'green'), alpha=.6), 
+    labels=expression(paste(s^2, "(", G[0], ")"), 
+                      s(z[list(don,0)], z[list(rcp,0)]),
+                      paste(s^2, "(", G[list(rcp,0)], ")"), 
+                      s(z[don], z[rcp]),
+                      paste(Var[BM], "(", bar(t), "; ", sigma, ")"),
+                      paste(Var[BMe], ""),
+                      paste(s^2, "(", z[BMsim], ") - ", hat(sigma)[e]),
+                      paste(Var[OU], "(", bar(t), "; ", list(alpha,sigma), ")"),
+                      paste(Var[OUe], ""),
+                      paste(s^2, "(", z[OUsim], ") - ", hat(sigma)[e])), 
+    guide = guide_legend(ncol = 2, keywidth = .6, order=2)
+    ) + 
+  theme_bw() +
+  theme(legend.box = "horizontal",  
+    legend.position = c(.995, .995), legend.justification = c("right", "top"),
+        legend.text.align = 0)
+pl1
+```
+
+
+## Fig S5 phenotypic variance in the toy model
+```{r prepare-FigS5, echo=FALSE, results="hide", eval=TRUE}
+dataBoxPl2 <- rbindlist(list(
+  h2statsAll[, list(id, process, rateContact, stat="var.z", value = varZ)],
+  h2statsAll[, list(id, process, rateContact, stat="var.z0", value = var.z0)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zD0", value = var.zD0)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zR0", value = var.zR0)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zD", value = var.zD)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zR", value = var.zR)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zBM", value = anH2.PMM.sigmaG2tMean + anH2.PMM.sigmae2)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zBMSim", value = corrProfile.PMM.varZ)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zOU", value = anH2.POUMM.sigmaG2tMean + anH2.POUMM.sigmae2)],
+  h2statsAll[, list(id, process, rateContact, stat="var.zOUSim", value = corrProfile.POUMM.varZ)]
+  
+  ))
+
+dataBoxPl2[, statF:=factor(stat, 
+                          levels = c("var.z", "var.z0", 
+                                     "var.zD0", "var.zR0",
+                                     "var.zD", "var.zR",
+                                     "var.zBM", "var.zBMSim", 
+                                     "var.zOU", "var.zOUSim"
+                                     ))]
+
+dataBoxPl2[process%in%c("neutral/neutral", "neutral/select"),
+          processWithin:="Within-host: neutral"]
+dataBoxPl2[process%in%c("select/neutral", "select/select"),
+          processWithin:="Within-host: select"]
+dataBoxPl2[process%in%c("neutral/neutral", "select/neutral"),
+          processBetween:="Between-host: neutral"]
+dataBoxPl2[process%in%c("neutral/select", "select/select"),
+          processBetween:="Between-host: select"]
+```
+
+```{r FigS5, echo=FALSE, eval=TRUE, results="hide", fig.height=7.2, fig.width=7.2}
+pl2 <- ggplot() +
+  geom_boxplot(data=dataBoxPl2[stat=="var.z"], 
+               mapping = aes(x = factor(1/rateContact), y = value, linetype="1"),
+               col="black",
+               outlier.size = 0, outlier.colour = "white", 
+               show.legend = NA) +
+  geom_boxplot(data=dataBoxPl2[stat != "var.z"], 
+               mapping = aes(x = factor(1/rateContact), y = value, 
+                             col = statF,
+                             fill = statF),
+               outlier.size = 0, outlier.colour = "white") +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(0.25, 1.05), name = expression(paste("Phenotypic variance"))) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  scale_linetype(
+    name = "True value:", 
+    labels = expression(paste({s^2}(z), "")),
+    guide = guide_legend(keywidth = 2.5, order=1)) +
+  scale_color_manual(
+    "Estimators:",
+    values = adjustcolor(c('navy', 'cadetblue4', 'cadetblue3',
+                           'salmon', 'salmon2', 
+                           'red2', 'brown', 'darkgreen', 'green'), alpha=.6), 
+    labels=expression(paste(s^2, "(", z[0], ")"), 
+                      paste(s^2, "(", z[list(don,0)], ")"), 
+                      paste(s^2, "(", z[list(rcp,0)], ")"), 
+                      paste(s^2, "(", z[list(don)], ")"), 
+                      paste(s^2, "(", z[list(rcp)], ")"), 
+                      paste(Var[BM], "(", bar(t), "; ", sigma, ")+", sigma[e]^2),
+                      paste(s^2, "(", z[BMsim], ")"),
+                      paste(Var[OU], "(", bar(t), "; ", list(alpha, sigma), ")+", sigma[e]^2),
+                      paste(s^2, "(", z[OUsim], ")")
+                      ), 
+    guide = guide_legend(ncol = 2, keywidth = .6, order=2)
+    ) + 
+  scale_fill_manual(
+    "Estimators:",
+    values = adjustcolor(c('navy', 'cadetblue4', 'cadetblue3',
+                           'salmon', 'salmon2', 
+                           'red2', 'brown', 'darkgreen', 'green'), alpha=.6), 
+    labels=expression(paste(s^2, "(", z[0], ")"), 
+                      paste(s^2, "(", z[list(don,0)], ")"), 
+                      paste(s^2, "(", z[list(rcp,0)], ")"), 
+                      paste(s^2, "(", z[list(don)], ")"), 
+                      paste(s^2, "(", z[list(rcp)], ")"), 
+                      paste(Var[BM], "(", bar(t), "; ", sigma, ")+", sigma[e]^2),
+                      paste(s^2, "(", z[BMsim], ")"),
+                      paste(Var[OU], "(", bar(t), "; ", list(alpha, sigma), ")+", sigma[e]^2),
+                      paste(s^2, "(", z[OUsim], ")")
+                      ), 
+    guide = guide_legend(ncol = 2, keywidth = .6, order=2)
+    ) + 
+  theme_bw() +
+  theme(legend.box = "horizontal",
+    legend.position = c(.995, .995), legend.justification = c("right", "top"),
+        legend.text.align = 0)
+  
+pl2
+```
+
+
+## Fig S6: Plot tau, alpha, sigmae and AICc from PMM and POUMM 
+```{r FigS6, fig.width=7.2, fig.height=7.2, eval=TRUE, results="hide", echo=FALSE}
+
+dataBoxPl <- rbindlist(list(
+  h2statsAll[, list(id, process, rateContact, stat="tau", value=meanTau10k)],
+  h2statsAll[, list(id, process, rateContact, stat="tauD", value=meanTauD10k)],
+  h2statsAll[, list(id, process, rateContact, stat="tauR", value=meanTauR10k)],
+  h2statsAll[, list(id, process, rateContact, stat="mean", value=meanZ)],
+  h2statsAll[, list(id, process, rateContact, stat="mean.BM", value=anH2.PMM.g0)],
+  h2statsAll[, list(id, process, rateContact, stat="mean.OU", value=anH2.POUMM.theta)],
+  h2statsAll[, list(id, process, rateContact, stat="g0.OU", value=anH2.POUMM.g0)],
+  
+  h2statsAll[, list(id, process, rateContact, stat="sigmae", value=sqrt((1-R2adj)*varZ))],
+  h2statsAll[, list(id, process, rateContact, stat="sigmae.OU", value=anH2.POUMM.sigmae)],
+  h2statsAll[, list(id, process, rateContact, stat="sigmae.BM", value=anH2.PMM.sigmae)],
+  h2statsAll[, list(id, process, rateContact, stat="alpha.OU", value=anH2.POUMM.alpha)],
+  h2statsAll[, list(id, process, rateContact, stat="AICc.BM", value=anH2.PMM.AICc)],
+  h2statsAll[, list(id, process, rateContact, stat="AICc.OU", value=anH2.POUMM.AICc)],
+  h2statsAll[, list(id, process, rateContact, stat="deltaAICc", value=anH2.PMM.AICc - anH2.POUMM.AICc)]
+  ))
+
+dataBoxPl[process%in%c("neutral/neutral", "neutral/select"),
+          processWithin:="Within: neutral"]
+dataBoxPl[process%in%c("select/neutral", "select/select"),
+          processWithin:="Within: select"]
+dataBoxPl[process%in%c("neutral/neutral", "select/neutral"),
+          processBetween:="Between: neutral"]
+dataBoxPl[process%in%c("neutral/select", "select/select"),
+          processBetween:="Between: select"]
+
+ggpl_tau <- ggplot() +
+  geom_boxplot(data = dataBoxPl[stat == "tau"], size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value),
+               outlier.size = 0, outlier.color = "grey",
+               show.legend = NA) +
+  facet_grid(processBetween~processWithin) +
+  scale_y_continuous(limits=c(0, 70), name = expression(paste("Measurement delay (", tau, ")"))) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  theme_bw()
+
+ggpl_mean <- ggplot() +
+  geom_boxplot(data=dataBoxPl[stat == "mean"], width = .8, size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value, linetype="1"), 
+               col="black",
+               outlier.size = 0, outlier.colour = adjustcolor("grey", .6), 
+               show.legend = NA) +
+  geom_boxplot(data=dataBoxPl[stat %in% c("mean.BM", "mean.OU")], width = 0.6, size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value, 
+                             col = stat,
+                             fill = stat),
+               col = adjustcolor("black", alpha = .6),
+               outlier.size = 0, outlier.colour = adjustcolor("grey", .6)) +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(2.5, 4), name = "Mean value") +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  scale_linetype(
+    name = "True value:", 
+    labels = expression(bar(z)),
+    guide = guide_legend(keywidth = 1.8)) +
+  scale_color_manual(
+    "Estimators:",
+    values = adjustcolor(c('brown', 'darkgreen'), alpha=.8), 
+    labels=c(expression(paste("PMM (", g[0], ")")) , 
+             #expression(paste("POUMM (", g[0], ")")),
+             expression(paste("POUMM (", theta, ")"))), 
+    guide = guide_legend(ncol = 1, keywidth = .6)
+    ) + 
+  scale_fill_manual(
+    "Estimators:",
+    values = adjustcolor(c('brown', 'darkgreen'), alpha=.8), 
+    labels=c(expression(paste("PMM (", g[0], ")")) , 
+             #expression(paste("POUMM (", g[0], ")")),
+             expression(paste("POUMM (", theta, ")"))), 
+    guide = guide_legend(ncol = 1, keywidth = .6)
+    ) + 
+  theme_bw() + theme(legend.position = "none")
+  # theme(legend.box = "horizontal",
+  #       legend.position = c(.995, .995), legend.justification = c("right", "top"),
+  #        legend.text.align = 0)
+
+ggpl_alpha <- ggplot() + 
+  geom_boxplot(data = dataBoxPl[stat %in% c("alpha.OU")], size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value),
+               outlier.size = 0, outlier.color = adjustcolor("grey", .6), 
+               show.legend = NA) +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(0.00, .075), name = expression(alpha)) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  theme_bw()
+
+ggpl_AICc <- ggplot() +
+  geom_boxplot(data=dataBoxPl[stat %in% c("deltaAICc")], width = 0.6, size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value),
+               outlier.size = 0, outlier.colour = "grey") +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(0, 400), name = expression(AICc[BM]-AICc[OU])) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  theme_bw() +
+  theme(legend.position="none")
+  
+ggpl_sigmae <- ggplot() +
+  geom_boxplot(data=dataBoxPl[stat == "sigmae"], width = .8, size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value, linetype="1"),
+               col="black",
+               outlier.size = 0, outlier.colour = adjustcolor("grey", .6), 
+               show.legend = NA) +
+  geom_boxplot(data=dataBoxPl[stat %in% c("sigmae.BM", "sigmae.OU")], width = 0.6, size = .4,
+               mapping = aes(x = factor(1/rateContact), y = value, 
+                             col = stat,
+                             fill = stat),
+               col = adjustcolor("black", alpha = .6),
+               outlier.size = 0, outlier.colour = adjustcolor("grey", .6)) +
+  facet_grid(processBetween~processWithin) + 
+  scale_y_continuous(limits=c(0.55, .85), name = expression(sigma[e])) +
+  scale_x_discrete(name = expression(paste("Mean contact interval (", 1/kappa, ")"))) +
+  scale_linetype(
+    name = "True value:", 
+    labels = expression(sigma[e] == sqrt((1-R[adj]^2)~~{s^2}(z))),
+    guide = guide_legend(keywidth = 1.8)) +
+  scale_color_manual(
+    "Estimators:",
+    values = adjustcolor(c('brown','darkgreen'), alpha=.8), 
+    labels=expression("PMM", "POUMM"), 
+    guide = guide_legend(ncol = 1, keywidth = .6)
+    ) +
+  scale_fill_manual(
+    "Estimators:",
+    values = adjustcolor(c('brown','darkgreen'), alpha=.8), 
+    labels=expression("PMM", "POUMM"), 
+    guide = guide_legend(ncol = 1, keywidth = .6)
+    ) + 
+  theme_bw() +
+  theme(legend.position="none")
+  # theme(legend.box = "horizontal",
+  #   legend.position = c(.995, .995), legend.justification = c("right", "top"),
+  #       legend.text.align = 0)
+
+require(cowplot)
+
+plgr <- plot_grid(ggpl_mean, ggpl_alpha, ggpl_sigmae, ggpl_AICc, 
+                  nrow=2, ncol = 2, labels = c("A", "B", "C", "D"), 
+                  label_size = 12)
+
+plgr
+```
+
+
+
+
+## Fig S7 Plotting correlation decay as a function of tau
+The following chunk needs large data.table objects to be loaded in 
+memory : simulEpidemicSIRNN, simulEpidemicSIRSN, simulEpidemicSIRNS, simulEpidemicSIRSS. To load these objects, the corresponding .RData files should either be generated by simulating the ToyModel (read file SimulateToyModel.Rmd) or downloaded.
+DATA/ToyModelSIR/NN.RData
+DATA/ToyModelSIR/SN.RData
+DATA/ToyModelSIR/NS.RData
+DATA/ToyModelSIR/SS.RData
+
+It is also possible to generate the above data-files by executing all toy-model simulations -> see the file "SimulateToyModel.Rmd"
+
+```{r load-data, include=FALSE, eval=FALSE}
+# set eval=TRUE if you wish to load the data from previous execution 
+# note that the data files are really big (about 2GB), so executing this snippet m
+# may result in a memory issue on a computer with little memory (e.g. smaller 
+# than 16GB) or many open applications.
+load('DATA/ToyModelSIR/NN.RData')
+load('DATA/ToyModelSIR/NS.RData')
+load('DATA/ToyModelSIR/SN.RData')
+load('DATA/ToyModelSIR/SS.RData')
+```
+
+```{r listPlotCorrProfileSim, eval=FALSE, echo=FALSE, include=FALSE}
+library(ggplot2)
+listPlots <- listPlotsNN <- listPlotsNS <- listPlotsSN <- listPlotsSS <- list()
+
+set.seed(2017)
+
+corrFunPOUMM <- function(anH2) {
+  f <- covFunPOUMM(anH2$fits$POUMM, corr=TRUE)
+  coef <- anH2$fits$PP$pp[i<j, coef(lm(t~tau))]
+  tMean <- mean(nodeTimes(anH2$tree, tipsOnly = TRUE))
+  function(tau) {
+    f(tau, coef[1]+coef[2]*tau, t = tMean)
+  }
+}
+
+corrFunPMM <- function(anH2) {
+  f <- covFunPOUMM(anH2$fits$PMM, corr=TRUE)
+  coef <- anH2$fits$PP$pp[i<j, coef(lm(t~tau))]
+  tMean <- mean(nodeTimes(anH2$tree, tipsOnly = TRUE))
+  function(tau) {
+    f(tau, coef[1]+coef[2]*tau, t = tMean)
+  }
+}
+
+for(pr in c("NN", "NS", "SN", "SS")) {
+  data <- get(paste0('simulEpidemicSIR', pr))
+  
+  data[, for(rc in unique(rateContact)[1:5]) {
+    xlim <- c(0, 60)
+    ylim <- c(0, .6)
+    
+    print(rc)
+    j <- which(rateContact == rc)
+    print(j)
+    notNull <- !sapply(anH2[j], is.null)
+    print(notNull)
+    if(sum(notNull)>=1) {
+      is <- sample(j[notNull], size = 1, replace = FALSE)
+      print(is)
+      for(i in 1:length(is)) {
+        print(pr)
+        epid <- epidemic[[is[i]]]
+        timeStep <- epid$timeStep
+        GEV <- GEValues[[1]]
+        tr <- tree10k[[is[i]]]
+        
+        cat("Extracting DR-couples\n")
+        drCouples <- extractDRCouples(epid, ids = tr$tip.label)
+        
+        drCouples[, zD0:=calcValue(envd, gD0, eD0, GEValues = GEV)]
+        drCouples[, zR0:=calcValue(env, gR0, eR0, GEValues = GEV)]
+        
+        drCouples[, zD:=calcValue(envd, gD, eD, GEValues = GEV)]
+        drCouples[, zR:=calcValue(env, gR, eR, GEValues = GEV)]
+        
+        drCouples[, tau:=taum*timeStep]
+        
+        cat("Extracting population\n")
+        pop <- extractPop(epid, ids = tr$tip.label)
+        pop[, z:=calcValue(env, gene, e, GEV)]
+        vR2adj <- R2adj(data=pop)
+        
+        vb0 <- drCouples[, coef(lm(zR0~zD0))[2]]
+        vb0CI <- drCouples[, confint(lm(zR0~zD0))[2,]]
+        
+        pl <- plotCorrProfile(anH2[[is[i]]], 
+                              corrProfile = corrProfile[[is[i]]], 
+                              tauQuantileTypes = "qu", xlim = xlim, ylim = ylim,
+                              palette=c("black", "green", "darkred"), 
+                              showLabel = FALSE)
+
+        pp <- anH2[[is[i]]]$fits$PP$pp
+        pp[, muz:=mean(z)]
+        pp[, varz:=var(z)]
+        pp.corr <- pp[, list(tau=unique(tau),
+                             y=unique((z[1]-muz)*(z[2]-muz)/varz)), by=idPair]
+        
+        tauQTypes <- "qu"
+        pp.corr.rep <- rbindlist(lapply(tauQTypes, function(tqt)
+          cbind(pp.corr, data.table(tauQuantileType=tqt))))
+        
+        corrTable <- corrProfile[[is[i]]]$corrTable
+        
+        pp.corr.modlin <- rbindlist(lapply(tauQTypes, function(tqt) {
+          linmod <- try(
+            corrTable[Data=="Original" &
+                                   tauQuantileType == tqt, lm(est~tauMean)], 
+            silent = TRUE)
+          
+          if(class(linmod) != "try-error") {
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      errLin:=predict(linmod)-est]
+            
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      aLinmod:=summary(linmod)$coefficients[1, 1]]
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      aLinmodCIlower:=confint(linmod)[1, 1]]
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      aLinmodCIupper:=confint(linmod)[1, 2]]
+            
+            
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      bLinmod:=summary(linmod)$coefficients[2, 1]]
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      bLinmodCIlower:=confint(linmod)[2, 1]]
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      bLinmodCIupper:=confint(linmod)[2, 2]]
+            corrTable[Data == "Original" & tauQuantileType == tqt, 
+                      pLinmod:=summary(linmod)$coefficients[2, 4]]
+
+            data.table(x=seq(0, 100, length.out = 100), 
+                       y = coef(linmod)[1] + coef(linmod)[2]*seq(0, 100, length.out = 100),
+                       tauQuantileType = tqt)
+          } else {
+            data.table(x=seq(0, 100, length.out = 100), y = as.double(NA), tauQuantileType = tqt)    
+          }
+        }))
+        
+        vb0Lower <- vb0CI[1]
+        vb0Upper <- vb0CI[2]
+        
+        cat("b0-pointrange\n")
+        
+        data_corrFun <- data.table(x=seq(xlim[1], xlim[2], length.out=100))
+        data_corrFun[, corrPOUMM:=corrFunPOUMM(anH2[[is[i]]])(x)]
+        data_corrFun[, corrPMM:=corrFunPMM(anH2[[is[i]]])(x)]
+        
+        pl <- pl + 
+          geom_line(data = pp.corr.modlin, mapping = aes(x=x, y=y), col="black", linetype=2) +
+          geom_segment(
+            data = data.table(x=xlim[1], y=vR2adj, xend = xlim[2], yend=vR2adj), 
+            mapping = aes(x = x, y = y, xend = xend, yend = yend),
+            col="black", size = .4) +
+          geom_pointrange(
+            data = data.table(x = xlim[1], y = vb0, 
+                              ymin = vb0Lower, ymax = vb0Upper), 
+            mapping = aes(x = x, y = y, ymin = ymin, ymax = ymax),
+            col="darkgrey", size =.25, pch=20) +
+          geom_line(data = data_corrFun, aes(x=x, y=corrPMM), col="brown") +
+          geom_line(data = data_corrFun, aes(x=x, y=corrPOUMM), col = "green") +
+          theme_bw()
+         
+        tauQuantiles <- c(qu=.2)
+
+        stats <- rbindlist(
+            lapply(names(tauQuantiles), function(Qname) {
+              probs=seq(0, 1, by=tauQuantiles[Qname])
+              drCouples[, paste0(Qname, 'tau'):={
+                quants=quantile(tau, probs=probs)
+                if(length(unique(quants))==1) {
+                  quants[1] <- .999*quants[1]
+                }
+                lower=names(quants)[match(unique(quants), quants)]
+                upper=names(quants)[length(quants)-match(unique(quants), rev(quants))+1]
+                labels=paste0(Qname,c('[', rep('(', length(lower)-2)),
+                              lower[1:(length(lower)-1)],',',upper[2:length(upper)],']')
+                
+                cut(tau, breaks=unique(quants), labels=labels, include.lowest=TRUE)
+              }]
+              drCouples[, tauQuantile:=eval(parse(text=paste0(Qname, 'tau')))]
+              
+              dt <- drCouples[, 
+                .SD[, {
+                  mod <- lm(zR~zD)
+                  ci <- confint(mod)
+                  
+                  list(tauMean = mean(tau), b=coef(mod)[2], b0Lower = ci[2,1], b0Upper = ci[2,2])
+                  
+                  }], 
+                keyby=tauQuantile]
+            }))
+    
+        pl <- pl +
+              geom_pointrange(
+                data = stats, 
+                mapping = aes(x=tauMean, y=b, ymin = b0Lower, ymax = b0Upper), 
+                col="cadetblue4", size = .25, pch = 20) 
+                    
+        if(pr == "NN") listPlotsNN <<- c(listPlotsNN, list(pl))
+        if(pr == "NS") listPlotsSN <<- c(listPlotsSN, list(pl))
+        if(pr == "SN") listPlotsNS <<- c(listPlotsNS, list(pl))
+        if(pr == "SS") listPlotsSS <<- c(listPlotsSS, list(pl))
+        
+        if(i==1) listPlots <<- c(listPlots, list(pl))
+      }  
+    }
+  }]
+}
+save(listPlots, listPlotsNN, listPlotsSN, listPlotsNS, listPlotsSS, 
+     file = 'DATA/ToyModelSIR/listPlotsCorrProfile.RData')
+```
+
+```{r, eval=TRUE, include=FALSE}
+load('DATA/ToyModelSIR/listPlotsCorrProfile.RData')
+```
+
+```{r FigS7, eval=TRUE, results="hide", fig.width=10.2, fig.height=10.2}
+GGally::ggmatrix(listPlots, nrow=5, ncol = 4, byrow = FALSE, 
+                 yAxisLabels = c("1/kappa==2", "1/kappa==4", "1/kappa==6", "1/kappa==8", "1/kappa==10"), 
+                 xAxisLabels = c("W: neutral / B: neutral", "W: neutral / B: select", "W: select / B: neutral", "W: select / B: select"), 
+                 labeller = "label_parsed", 
+                 xlab = expression(paste("Phylogenetic distance (", d[ij], ")")), 
+                 ylab = expression(paste("Correlation (", R[adj]^2, ", ", r[A], ", ", b, ", ", r[BM], ", ", r[OU], ")"))) + 
+  theme(strip.text = element_text(size=9), axis.title = element_text(size=9))
+```
+
+
+
+# Analysis of HIV data
+
+## Load hivdata 
+```{r load-hiv-data, include=FALSE}
+if(file.exists("DATA/HIV/hivdata.RData")) {
+  load('DATA/HIV/hivdata.RData')  
+} else {
+  stop("Check that the file DATA/HIV/hivdata.RData exists.")
+}
+```
+
+## Fig 5: Trait-values along phylogeny
+
+```{r Fig5, fig.width=4.6, fig.height=4, echo=FALSE, eval=TRUE, results="hide"} 
+rowNo <- 1
+tauQTypeCol <- "Dtau"
+data_pp <- copy(hivdata$anH2[[rowNo]]$fits$PP$pp)
+data_pp[, meandeltaz:=mean(deltaz), by=tauQTypeCol]
+data_pp[, meantau:=mean(tau), by=tauQTypeCol]
+data_pp <- data_pp[, list(meantau=unique(meantau), meandeltaz=unique(meandeltaz), tau=unique(tau),
+                    deltaz=unique(deltaz),
+                    Q=unique(eval(parse(text=tauQTypeCol)))), by="idPair"]
+plot_scatter <- ggplot(data_pp) + 
+  geom_point(aes(x=tau, y=deltaz), col="darkgrey", size=.002) + 
+  geom_point(data=data_pp[tau<10^(-4)], mapping = aes(x=tau, y=deltaz), 
+             col="magenta", size = .002) +
+  geom_smooth(aes(x=tau, y=deltaz), method="lm", col="black") +
+  coord_cartesian(ylim = c(0, 4), xlim = c(0, .1)) +
+  scale_y_continuous(name = expression(paste("|", Delta, " ", lg(spVL), "|"))) +
+  scale_x_continuous(name = expression(paste("Phylogenetic distance (", d[ij], ")"))) + 
+  theme_bw()
+
+data <- data.table(id = 1:hivdata$nTips[[rowNo]], 
+                   z = hivdata$v[[rowNo]], 
+                   t = nodeTimes(hivdata$tree[[rowNo]], tipsOnly = TRUE))
+
+setkey(data, id)
+
+data[, qt:=cut(t, breaks=12)]
+
+data_pp <- copy(hivdata$anH2[[rowNo]]$fits$PP$pp)
+data_pp[, ti:=data[list(i), t]]
+
+data_cpp <- data_pp[tau<10^(-4), list(t1=ti[1], t2 = ti[2], z1=z[1], z2=z[2]), 
+             by=idPair] 
+
+plot_trait <- 
+  ggplot(data) + geom_boxplot(aes(x=t, y=z, group=qt), varwidth = TRUE) +
+    geom_segment(data = data_cpp,
+                 mapping = aes(x=t1, y=z1, xend=t2, yend=z2), 
+                 col = adjustcolor("magenta", .5)) +
+    geom_point(data = data_cpp, 
+               mapping = aes(x=t1, y = z1), col = adjustcolor("magenta", .5), size = .4) + 
+    geom_point(data = data_cpp, 
+               mapping = aes(x=t2, y = z2), col = adjustcolor("magenta", .5), size = .4) +
+    scale_y_continuous(name = expression(lg(spVL)), limits = c(1, 8)) +
+    scale_x_continuous(name = "root-tip distance", limits = c(.05, .27)) +
+    theme_bw()
+
+plot_box <- ggplot(rbindlist(list(data[, list(z, cat="All")], 
+                                  data_pp[, list(z, cat="PPs")],
+                                  data_pp[tau<10^(-4), list(z, cat="CPPs")]))) + 
+  geom_boxplot(aes(y = z, 
+                   x = factor(cat, levels=c("All", "CPPs", "PPs")), 
+                   col = factor(cat, levels=c("All", "CPPs", "PPs")))) +
+  scale_color_manual(values=c("black", "magenta", "darkgrey")) +
+  scale_y_continuous(name = expression(lg(spVL)), limits = c(1, 8)) +
+  scale_x_discrete(name = "") +
+  theme_bw() + 
+  theme(legend.position = "none")
+
+require(cowplot)
+
+plgr1 <- plot_grid(plot_scatter, nrow=1, ncol = 1, labels=c("A"))
+plgr2 <- plot_grid(plot_trait, plot_box, nrow=1, ncol=2, rel_widths = c(4,2), labels=c("B", "C"))
+
+plot_grid(plgr1, plgr2, nrow=2, ncol=1)
+```
+
+## Fig 3: Correlation as a function of phylogenetic distance
+```{r Fig3, eval=TRUE, echo=FALSE, fig.height=3, fig.width=6.7, message=FALSE, warning=FALSE, include=TRUE, results="hide"}
+rowNo <- 1
+tMean <- mean(nodeTimes(hivdata$tree[[rowNo]], tipsOnly = TRUE))
+              
+corrTable <- hivdata$corrProfile[[rowNo]]$corrTable
+
+corrTableSizes <- corrTable[Data == "Original", 
+                            list(N=max(N), Nbins = length(K), K = K[1], 
+                                 K2 = round(mean(K))), 
+                            by = tauQuantileType]
+
+corrTable[, tauQuantileType:=factor(tauQuantileType, 
+                                    levels = rev(levels(tauQuantileType)))]
+
+corrFunPOUMM <- function() {
+  f <- covFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM, corr=TRUE)
+  coef <- hivdata$anH2[[rowNo]]$fits$PP$pp[i<j, coef(lm(t~tau))]
+  function(tau) {
+    f(tau, coef[1]+coef[2]*tau, t = tMean)
+  }
+}
+
+corrFunPOUMM2 <- function(tau) {
+  r2(sigma2POUMM/(2*alphaPOUMM)/sigma2zPOUMM) * exp(-r2(alphaPOUMM)*tau)*(1-exp(-2*alphaPOUMM*lm_t_tau[1]-2*alphaPOUMM*lm_t_tau[2]*tau))
+}
+
+corrHPDFunPOUMM <- function() {
+  covHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM, corr=TRUE)
+}
+
+dij.tij.t <- cbind(seq(0, 0.14, by=.005), tMean-seq(0, 0.14, by=.005)/2, tMean)
+
+corrHPDPOUMM <- as.data.table(cbind(x=seq(0, 0.14, by=.005), 
+                                    corrHPDFunPOUMM()(dij.tij.t)))
+
+corrFunPMM <- function() {
+  f <- covFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM, corr=TRUE)
+  coef <- hivdata$anH2[[rowNo]]$fits$PP$pp[i<j, coef(lm(t~tau))]
+  function(tau) {
+    f(tau, tanc = coef[1]+coef[2]*tau, t = tMean)
+  }
+}
+
+corrHPDFunPMM <- function() {
+  covHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM, corr=TRUE)
+}
+
+
+corrHPDPMM <- as.data.table(cbind(x=seq(0, 0.14, by=.005), 
+                                    corrHPDFunPMM()(dij.tij.t)))
+
+
+tauQTypes <-  c("A", "qu", "O", "D", "V")
+tauQNames <- c("All", "Quintiles", "Deciles", "Octiles", "Ventiles")
+
+tauQTypes <- "D"
+tauQTypeCol <- "Dtau"
+
+ppAll <- summary(hivdata$anH2[[1]]$fits$PP)[stat=="rA" & tauQuantile=="A[0%,100%]", c(est, CI.lower, CI.upper)]
+
+pp <- hivdata$anH2[[rowNo]]$fits$PP$pp
+pp[, muz:=mean(z)]
+pp[, varz:=var(z)]
+pp.corr <- pp[, list(tau=unique(tau), y=unique((z[1]-muz)*(z[2]-muz)/varz)), by=idPair]
+
+pp.corr.rep <- rbindlist(lapply(tauQTypes, function(tqt)
+  cbind(pp.corr, data.table(tauQuantileType=tqt))))
+
+rSpTable <- rbindlist(lapply(
+  corrTable[, levels(tauQuantileType)],
+  function(tqt) {
+    byCol <- paste0(tqt, "tau")
+    pp[, .SD[, list(z1=z[1], z2=z[2], 
+                    tau=unique(tau), t=unique(t)),
+             by=idPair][, {
+               rSp = cor(z1, z2, method="spearman")
+               list(
+                 stat="rSp", N=.N*2, K=.N,
+                 est=rSp,
+                 filter="all",
+                 tauMean=mean(tau),
+                 tauMedian=median(tau),
+                 tMean = mean(t),
+                 tMedian = median(t),
+                 tauQuantileType = tqt,
+                 CI.lower = rSp - 1.96/sqrt(.N-3),
+                 CI.upper = rSp + 1.96/sqrt(.N-3),
+                 Data = "Original ranks",
+                 method="PP", 
+                 MLE = NA
+               )}
+               ], 
+       keyby=list(tauQuantile=eval(parse(text=byCol)))]
+  }))
+
+corrTable <- rbind(corrTable, rSpTable)
+
+pp.corr.modlinear <- rbindlist(lapply(tauQTypes, function(tqt) {
+  linmod <- corrTable[Data=="Original" & tauQuantileType == tqt, lm(est~tauMean)]
+  corrTable[Data == "Original" & tauQuantileType == tqt, errLin:=predict(linmod)-est]
+  data.table(x=seq(0, .14, length.out = 100), 
+             y = coef(linmod)[1]+ coef(linmod)[2]*seq(0, .14, length.out = 100),
+             tauQuantileType = tqt)
+}))
+
+pp.rSp.modlinear <- rbindlist(lapply(tauQTypes, function(tqt) {
+  linmod <- corrTable[Data=="Original ranks" & tauQuantileType == tqt, lm(est~tauMean)]
+  corrTable[Data == "Original ranks" & tauQuantileType == tqt, errLin:=predict(linmod)-est]
+  data.table(x=seq(0, .14, length.out = 100), 
+             y = coef(linmod)[1]+ coef(linmod)[2]*seq(0, .14, length.out = 100),
+             tauQuantileType = tqt)
+}))
+
+plot_corr <- ggplot(corrTable[tauQuantileType %in% tauQTypes]) +
+  geom_ribbon(data = corrHPDPOUMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("green", alpha=.2),
+              col=adjustcolor("green", alpha=.2)) +
+  geom_ribbon(data = corrHPDPMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("darkred", alpha=.2),
+              col=adjustcolor("darkred", alpha=.2)) +
+  stat_function(fun = corrFunPOUMM(),
+                col="green", size=1) +
+  
+  stat_function(fun = corrFunPMM(), 
+                col="brown", size=1) +
+  geom_line(data = pp.corr.modlinear, mapping = aes(x=x, y=y), col="black", linetype=1, size=1) +
+  geom_line(data = pp.rSp.modlinear, mapping = aes(x=x, y=y), col="magenta", linetype=1, size=1) +
+  geom_pointrange(corrTable[tauQuantileType %in% tauQTypes], 
+                  mapping = aes(x = tauMean+.000, y = est, 
+                                ymin = CI.lower, ymax = CI.upper, col = Data),
+                  pch = 20, size = .8, position = position_dodge(.00225)) +
+  geom_segment(aes(x=0, y=ppAll[2], xend=.12, yend=ppAll[2]), linetype=2) +
+  geom_segment(aes(x=0, y=ppAll[3], xend=.12, yend=ppAll[3]), linetype=2) +   
+  
+  coord_cartesian(ylim = c(-0.02, .4), xlim = c(0, .1)) +
+  xlab(expression(paste("Phylogenetic distance (", d[ij], ") [substitutions per site]"))) +
+  ylab("Correlation") +
+  theme_bw() +
+  scale_color_manual(
+    values = c(`Original`="black", `PMM simulation`="darkred", `POUMM simulation`="green", `Original ranks`="magenta"), 
+    name = '',
+    labels = expression(
+      paste("UK tree, ", lg(spVL), " (", r[A],")"), 
+      paste("UK tree, ", lg(spVL), " (", r[Sp],")"), 
+      paste("UK tree, ", "PMM simulations (", r[A], ")"), 
+      paste("UK tree, ", "POUMM simulations (", r[A], ")"))) +
+  theme(legend.position = c(0.8, .76), 
+        legend.title = element_text(size=0),
+        legend.text.align = 0, 
+        legend.text = element_text(size=8))
+
+
+
+
+plot_corr
+```
+
+
+## Fig S2: Covariance and variance as functions of t and t_ij in the UK data
+```{r FigS2, eval=TRUE, echo=FALSE, include=TRUE, results="hide", fig.width=6.7, fig.height=6.2}
+rowNo <- 1
+library(coda)
+
+data <- data.table(id = 1:hivdata$nTips[[rowNo]], 
+                   z = hivdata$v[[rowNo]], 
+                   t = nodeTimes(hivdata$tree[[rowNo]], tipsOnly = TRUE))
+
+setkey(data, id)
+
+data[, qt:=cut(t, breaks=12)]
+
+pp <- copy(hivdata$anH2[[rowNo]]$fits$PP$pp)
+pp[, ti:=data[list(i), t]]
+
+plot.tij.dij <- ggplot(pp) +
+  geom_point(aes(x=t, y=tau, col=(tau<10^-4), alpha=0.6), pch=20) +
+  geom_smooth(aes(x=t, y=tau), col="black", method="lm") +
+  scale_x_continuous(name=expression(
+    paste("Root-mrca distance (", t[ij], ") [sps]")),
+    limits=c(0, 0.2)) +
+  scale_y_continuous(name = expression(
+    paste("Ph. dist. (", d[ij], ")", " [sps]")),
+    limits = c(0, 0.3)) +
+  scale_color_manual(values=c("grey", "magenta")) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+
+
+# tMean should not be needed for the covariance calculation (only passed as a
+# needed argument)
+tMean <- mean(nodeTimes(hivdata$tree[[rowNo]], tipsOnly = TRUE))
+
+getCovTable <- function(pp) {
+  pp <- pp[, list(tau=unique(tau), t = unique(t), z1=z[1], z2=z[2]), by=idPair]
+  pp[, list(N = .N, 
+              est = cov(z1, z2), 
+              lower = (cor(z1, z2)-1.96/sqrt(.N-3))*sd(z1)*sd(z2), 
+              upper = (cor(z1, z2)+1.96/sqrt(.N-3))*sd(z1)*sd(z2),
+              tMean=mean(t), tQuantileType="D"),  
+       keyby=list(tQuantile=cut(t, breaks=quantile(t, probs=seq(0,1,.1)), 
+                 include.lowest = TRUE))]
+}
+
+covTableOriginal <- getCovTable(copy(pp))
+covTableOriginal[, Data:="Original"]
+
+covTablePOUMMSimulation <- rbindlist(
+  lapply(hivdata$corrProfile[[rowNo]]$simulatedData$POUMM, 
+         function(v) {
+           pp <- copy(pp)
+           pp[, z:=v[i]]
+           getCovTable(pp)
+         }))
+
+covTablePOUMMSimulation <- covTablePOUMMSimulation[
+  , list(N = unique(N), est = mean(est), 
+         lower=quantile(est, probs=.025), 
+         upper = quantile(est, probs = .975), 
+         tMean = unique(tMean), Data = "POUMM simulation",
+         tQuantileType = unique(tQuantileType)),
+  keyby=list(tQuantile)]
+
+covTablePMMSimulation <- rbindlist(
+  lapply(hivdata$corrProfile[[rowNo]]$simulatedData$PMM, 
+         function(v) {
+           pp <- copy(pp)
+           pp[, z:=v[i]]
+           getCovTable(pp)
+         }))
+
+
+covTablePMMSimulation <- covTablePMMSimulation[
+  , list(N = unique(N), est = mean(est), 
+         lower=quantile(est, probs=.025), 
+         upper = quantile(est, probs = .975), 
+         tMean = unique(tMean), Data = "PMM simulation", 
+         tQuantileType = unique(tQuantileType)),
+  keyby=list(tQuantile)]
+
+covTable <- rbind(covTableOriginal, 
+                  covTablePMMSimulation, 
+                  covTablePOUMMSimulation)
+
+# linear model of tau_ij on t_ij
+lm.dij.tij <- pp[, lm(tau~t)]
+
+dij.tij.t <- cbind(
+  coef(lm.dij.tij)[1] + coef(lm.dij.tij)[2]*seq(0, 0.2, by=.005),
+  seq(0, 0.2, by=.005),
+  seq(0, 0.2, by=.005)
+  )
+
+
+covPOUMM <- data.table(
+  x = dij.tij.t[, 2], 
+  y = covFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM)(tau=dij.tij.t[,1], 
+                                                    tanc=dij.tij.t[, 2], 
+                                                    t=dij.tij.t[,3]))
+
+covPMM <- data.table(
+  x = dij.tij.t[, 2], 
+  y = covFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM)(tau=dij.tij.t[,1], 
+                                                  tanc=dij.tij.t[, 2], 
+                                                  t=dij.tij.t[,3]))
+covHPDPOUMM <- as.data.table(
+  cbind(x=seq(0, 0.2, by=.005), 
+        covHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM)(dij.tij.t)))
+
+covHPDPMM <- as.data.table(
+  cbind(x=seq(0, 0.2, by=.005), 
+        covHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM)(dij.tij.t)))
+
+tQTypes <- "D"
+cov.modlinear <- rbindlist(lapply(tQTypes, function(tqt) {
+  linmod <- covTable[Data=="Original" & tQuantileType == tqt, lm(est~tMean+0)]
+  covTable[Data == "Original" & tQuantileType == tqt, errLin:=predict(linmod)-est]
+  data.table(x=seq(0, .2, length.out = 100), 
+             y = coef(linmod)[1]*seq(0, .2, length.out = 100),
+             tQuantileType = tqt)
+}))
+
+
+plot_cov <- ggplot() +
+  geom_ribbon(data = covHPDPOUMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("green", alpha=.2),
+              col=adjustcolor("green", alpha=.2)) +
+  geom_ribbon(data = covHPDPMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("darkred", alpha=.2),
+              col=adjustcolor("darkred", alpha=.2)) +
+  geom_line(data = covPOUMM, mapping = aes(x = x, y = y), col="green", size=1) +
+  geom_line(data = covPMM, mapping = aes(x = x, y = y), col="brown", size=1) +
+  geom_line(data = cov.modlinear, mapping = aes(x=x, y=y), col="black", linetype=1, size=1) +
+  geom_pointrange(covTable[tQuantileType %in% tQTypes], 
+                  mapping = aes(x = tMean+.000, y = est, 
+                                ymin = lower, ymax = upper, col = Data),
+                  pch = 20, size = .8, position = position_dodge(.005)) +
+  coord_cartesian(ylim = c(0, .3), xlim = c(0.0, .2)) +
+  xlab(expression(paste("Root-mrca distance (", t[ij], ") [sps]"))) +
+  ylab("Covariance") +
+  theme_bw() +
+  scale_color_manual(
+    values = c(`Original`="black", `PMM simulation`="darkred", `POUMM simulation`="green"),
+    name = '',
+    labels = expression(
+      paste("UK tree, ", lg(spVL)),
+      paste("UK tree, ", "PMM simulations"),
+      paste("UK tree, ", "POUMM simulations"))) +
+  theme(legend.position = c(0.2, .56), 
+        legend.title = element_text(size=0),
+        legend.text.align = 0, 
+        legend.text = element_text(size=8))
+
+
+### Create the variance panel
+varFunPOUMM <- function(object) {
+  asse <- object$spec$parMapping(coef(object))[c(1,3,4)]
+  function(t) {
+    varOU(t = t, alpha = asse[1], sigma = asse[2]) + asse[3]^2
+  }
+}
+
+varHPDFunPOUMM <- function(object, prob=.95, ...) {
+  smm <- summary(object, mode="long", ...)
+  setkey(smm, stat)
+  mcmc_asse <- smm[list(c('alpha', 'sigma', 'sigmae')), mcmc]
+  asse <- cbind(mcmc_asse[[1]], mcmc_asse[[2]], mcmc_asse[[3]])
+  
+  function(x) {
+    t(sapply(x, function(xi) {
+      vars <- apply(asse, 1, function(asse) {
+        varOU(alpha=asse[1], sigma=asse[2], t=xi)+asse[3]^2
+      })
+      vars_mcmc <- mcmc(vars, start=start(mcmc_asse[[1]]),
+                        end=end(mcmc_asse[[1]]),
+                        thin=thin(mcmc_asse[[1]]))
+      as.vector(HPDinterval(vars_mcmc, prob=prob))
+    }))
+  }
+}
+
+
+varHPDPOUMM <- as.data.table(
+  cbind(x=seq(0, 0.2, by=.005), 
+        varHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM)(x=seq(0, 0.2, by=.005))))
+
+varHPDPMM <- as.data.table(
+  cbind(x=seq(0, 0.2, by=.005),
+        varHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM)(x=seq(0, 0.2, by=.005))))
+
+
+
+zTable <- data.table(id = 1:hivdata$nTips[[rowNo]], 
+                       z = hivdata$v[[rowNo]], 
+                       t = nodeTimes(hivdata$tree[[rowNo]], tipsOnly = TRUE))
+zTable[, Dt:=cut(t, breaks=quantile(t, probs=seq(0,1,by=.1)), include.lowest = TRUE)]
+
+
+varTable <- zTable[
+  , list(tQuantileType="D", stat="Var", N=.N, est=var(z), tMean=mean(t),
+         CI.lower=(.N-1)*var(z)/qchisq(.975, .N-1), 
+         CI.upper=(.N-1)*var(z)/qchisq(.025, .N-1), 
+         Data="Original"), 
+  keyby=list(tQuantile=Dt)]
+
+varTable <- rbindlist(list(
+  varTable,
+  zTable[, {
+  vecVarsPMM <- sapply(hivdata$corrProfile[[rowNo]]$simulatedData$PMM, 
+                       function(zSim) var(zSim[id]))
+  list(tQuantileType="D", stat="Var", N=.N, est=mean(vecVarsPMM), 
+       tMean=mean(t), 
+       CI.lower = quantile(vecVarsPMM, probs=.025), 
+       CI.upper = quantile(vecVarsPMM, probs=.975),
+       Data = "PMM simulation")
+}, keyby=list(tQuantile=Dt)],
+
+  zTable[, {
+  vecVarsPOUMM <- sapply(hivdata$corrProfile[[rowNo]]$simulatedData$POUMM, 
+                       function(zSim) var(zSim[id]))
+  list(tQuantileType="D", stat="Var", N=.N, est=mean(vecVarsPOUMM), 
+       tMean=mean(t), 
+       CI.lower = quantile(vecVarsPOUMM, probs=.025), 
+       CI.upper = quantile(vecVarsPOUMM, probs=.975),
+       Data = "POUMM simulation")
+}, keyby=list(tQuantile=Dt)]))
+
+tQTypes <- "D"
+var.modlinear <- rbindlist(lapply(tQTypes, function(tqt) {
+  linmod <- varTable[Data=="Original" & tQuantileType == tqt, lm(est~tMean)]
+  varTable[Data == "Original" & tQuantileType == tqt, errLin:=predict(linmod)-est]
+  data.table(x=seq(0, .2, length.out = 100), 
+             y = coef(linmod)[1]+ coef(linmod)[2]*seq(0, .2, length.out = 100),
+             tQuantileType = tqt)
+}))
+
+plot_var <- ggplot(varTable[tQuantileType %in% tQTypes]) +
+  geom_ribbon(data = varHPDPOUMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("green", alpha=.2),
+              col=adjustcolor("green", alpha=.2)) +
+  geom_ribbon(data = varHPDPMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("darkred", alpha=.2),
+              col=adjustcolor("darkred", alpha=.2)) +
+  stat_function(fun = varFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM),
+                col="green", size=1) +
+
+  stat_function(fun = varFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM),
+                col="brown", size=1) +
+  geom_line(data = var.modlinear, mapping = aes(x=x, y=y), col="black", linetype=1, size=1) +
+  geom_pointrange(varTable[tQuantileType %in% tQTypes], 
+                  mapping = aes(x = tMean+.000, y = est, 
+                                ymin = CI.lower, ymax = CI.upper, col = Data),
+                  pch = 20, size = .8, position = position_dodge(.005)) +
+  coord_cartesian(ylim = c(0.6, .9), xlim = c(0.0, .2)) +
+  xlab(expression(paste("Root-tip distance (", t, ") [sps]"))) +
+  ylab("Variance") +
+  theme_bw() +
+  scale_color_manual(
+    values = c(`Original`="black", `PMM simulation`="darkred", `POUMM simulation`="green"),
+    name = '',
+    labels = expression(
+      paste("UK tree, ", lg(spVL), " (", s^2,")"),
+      paste("UK tree, ", "PMM simulations (", s^2, ")"),
+      paste("UK tree, ", "POUMM simulations (", s^2, ")"))) +
+  theme(legend.position = "none", #c(0.8, .2), 
+        legend.title = element_text(size=0),
+        legend.text.align = 0, 
+        legend.text = element_text(size=8))
+
+
+cowplot::plot_grid(plot.tij.dij, plot_cov, plot_var,
+                   nrow = 3, labels=c("A", "B", "C"))
+```
+
+## Fig S8: MCMC samples of POUMM parameters: $\alpha$, $\theta$, $\sigma^2$, $\sigma_e^2$
+```{r FigS8, fig.width=6.6, fig.height=6.2, eval=TRUE, results="hide", echo=TRUE}
+pl <- plot(hivdata$anH2[[1]]$fits$POUMM, doPlot = FALSE, doZoomIn = TRUE, stat=c("alpha", "theta", "sigma", "sigmae", "H2tMean", "H2e"), thinMCMC = 4000)
+
+cowplot::plot_grid(pl$traceplot + scale_x_continuous(name = "iteration", labels = scales::scientific) + theme_bw(), 
+                   pl$densplot + theme_bw(), nrow = 2, labels=c("A", "B"))
+```
+
+## Fig S1: Different stratifications on tau
+```{r FigS1, eval=TRUE, echo=FALSE, include=TRUE, results="hide", fig.width=6.7, fig.height=7.8}
+rowNo <- 1
+tMean <- mean(nodeTimes(hivdata$tree[[rowNo]], tipsOnly = TRUE))
+corrTable <- hivdata$corrProfile[[rowNo]]$corrTable
+
+corrTableSizes <- corrTable[Data == "Original", 
+                            list(N=max(N), Nbins = length(K), K = K[1], 
+                                 K2 = round(mean(K))), 
+                            by = tauQuantileType]
+
+corrTable[, tauQuantileType:=factor(tauQuantileType, 
+                                    levels = rev(levels(tauQuantileType)))]
+
+corrFunPOUMM <- function() {
+  f <- covFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM, corr=TRUE)
+  coef <- hivdata$anH2[[rowNo]]$fits$PP$pp[i<j, coef(lm(t~tau))]
+  function(tau) {
+    f(tau, tanc = coef[1]+coef[2]*tau, t=tMean)
+  }
+}
+
+corrHPDFunPOUMM <- function() {
+  covHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$POUMM, corr=TRUE)
+}
+
+
+dij.tij.t <- cbind(seq(0, 0.14, by=.005), tMean-seq(0, 0.14, by=.005)/2, tMean)
+
+corrHPDPOUMM <- as.data.table(cbind(x=seq(0, 0.14, by=.005), 
+                                    corrHPDFunPOUMM()(dij.tij.t)))
+
+
+corrFunPMM <- function() {
+  f <- covFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM, corr=TRUE)
+  coef <- hivdata$anH2[[rowNo]]$fits$PP$pp[i<j, coef(lm(t~tau))]
+  function(tau) {
+    f(tau, coef[1]+coef[2]*tau, t = tMean)
+  }
+}
+
+corrHPDFunPMM <- function() {
+  covHPDFunPOUMM(hivdata$anH2[[rowNo]]$fits$PMM, corr=TRUE)
+}
+
+corrHPDPMM <- as.data.table(cbind(x=seq(0, 0.14, by=.005), 
+                                    corrHPDFunPMM()(dij.tij.t)))
+
+
+tauQTypes <-  c("A", "M",  "Q", "qu", "O", "D", "V")
+tauQNames <- c("All", "Medians", "Quartiles", "Quintiles", "Octiles", "Deciles", "Ventiles")
+
+corrHPDPOUMM <- rbindlist(lapply(tauQTypes, function(tqt)
+  cbind(corrHPDPOUMM, data.table(tauQuantileType=tqt))
+))
+
+corrHPDPMM <- rbindlist(lapply(tauQTypes, function(tqt)
+  cbind(corrHPDPMM, data.table(tauQuantileType=tqt))
+))
+
+pp <- hivdata$anH2[[rowNo]]$fits$PP$pp
+pp[, muz:=mean(z)]
+pp[, varz:=var(z)]
+pp.corr <- pp[, list(tau=unique(tau), y=unique((z[1]-muz)*(z[2]-muz)/varz)), by=idPair]
+
+pp.corr.rep <- rbindlist(lapply(tauQTypes, function(tqt)
+  cbind(pp.corr, data.table(tauQuantileType=tqt))))
+
+rSpTable <- rbindlist(lapply(
+  corrTable[, levels(tauQuantileType)],
+  function(tqt) {
+    byCol <- paste0(tqt, "tau")
+    pp[, .SD[, list(z1=z[1], z2=z[2], 
+                    tau=unique(tau), t=unique(t)),
+             by=idPair][, {
+               rSp = cor(z1, z2, method="spearman")
+               list(
+                 stat="rSp", N=.N*2, K=.N,
+                 est=rSp,
+                 filter="all",
+                 tauMean=mean(tau),
+                 tauMedian=median(tau),
+                 tMean = mean(t),
+                 tMedian = median(t),
+                 tauQuantileType = tqt,
+                 CI.lower = rSp - 1.96/sqrt(.N-3),
+                 CI.upper = rSp + 1.96/sqrt(.N-3),
+                 Data = "Original ranks",
+                 method="PP", 
+                 MLE = NA
+               )}
+               ], 
+       keyby=list(tauQuantile=eval(parse(text=byCol)))]
+  }))
+
+corrTable <- rbind(corrTable, rSpTable)
+
+pp.corr.modlinear <- rbindlist(lapply(tauQTypes, function(tqt) {
+  linmod <- corrTable[Data=="Original" & tauQuantileType == tqt, lm(est~tauMean)]
+  if(tqt!="A") {
+    corrTable[Data == "Original" & tauQuantileType == tqt, errLin:=predict(linmod)-est]
+    corrTable[Data == "Original" & tauQuantileType == tqt, aLinmod:=summary(linmod)$coefficients[1, 1]]
+    corrTable[Data == "Original" & tauQuantileType == tqt, bLinmod:=summary(linmod)$coefficients[2, 1]]
+    corrTable[Data == "Original" & tauQuantileType == tqt, pLinmod:=summary(linmod)$coefficients[2, 4]]
+  }
+  data.table(x=seq(0, .14, length.out = 100), 
+             y = coef(linmod)[1]+ coef(linmod)[2]*seq(0, .14, length.out = 100),
+             tauQuantileType = tqt)
+}))
+
+pp.rSp.modlinear <- rbindlist(lapply(tauQTypes, function(tqt) {
+  linmod <- corrTable[Data=="Original ranks" & tauQuantileType == tqt, lm(est~tauMean)]
+  if(tqt!="A") {
+    corrTable[Data == "Original ranks" & tauQuantileType == tqt, errLin:=predict(linmod)-est]
+    corrTable[Data == "Original ranks" & tauQuantileType == tqt, aLinmod:=summary(linmod)$coefficients[1, 1]]
+    corrTable[Data == "Original ranks" & tauQuantileType == tqt, bLinmod:=summary(linmod)$coefficients[2, 1]]
+    corrTable[Data == "Original ranks" & tauQuantileType == tqt, pLinmod:=summary(linmod)$coefficients[2, 4]]
+  }
+  data.table(x=seq(0, .14, length.out = 100), 
+             y = coef(linmod)[1]+ coef(linmod)[2]*seq(0, .14, length.out = 100),
+             tauQuantileType = tqt)
+}))
+
+
+plot_corr <- ggplot(corrTable[tauQuantileType %in% tauQTypes]) +
+  geom_ribbon(data = corrHPDPOUMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("green", alpha=.2),
+              col=adjustcolor("green", alpha=.2)) +
+  geom_ribbon(data = corrHPDPMM,
+              mapping=aes(x = x, ymin = V2, ymax = V3),
+              fill=adjustcolor("darkred", alpha=.2),
+              col=adjustcolor("darkred", alpha=.2)) +
+  stat_function(fun = corrFunPOUMM(),
+                col="green", size=1) +
+  stat_function(fun = corrFunPMM(), 
+                col="brown", size=1) +
+  geom_line(data = pp.corr.modlinear, mapping = aes(x=x, y=y), col="black", linetype=1) +
+  geom_line(data = pp.rSp.modlinear, mapping = aes(x=x, y=y), col="magenta", linetype=1) +
+  # geom_line(data = pp.corr.modexp, mapping = aes(x=x, y=y), col="blue", linetype=2) +
+  #geom_smooth(data=pp.corr.rep, aes(x=tau, y=y), method="lm", size = 1)+
+  geom_pointrange(data = corrTable[tauQuantileType %in% tauQTypes], 
+                  mapping = aes(x = tauMean+.000, y = est, 
+                                ymin = CI.lower, ymax = CI.upper, col = Data),
+                  pch = 20, size = .5, position = position_dodge(.002)) +
+  geom_segment(data = corrTable[tauQuantileType %in% tauQTypes], 
+               aes(x=0, y=ppAll[2], xend=.1, yend=ppAll[2]), linetype=2, size=.2) +
+  geom_segment(data = corrTable[tauQuantileType %in% tauQTypes], 
+               aes(x=0, y=ppAll[3], xend=.1, yend=ppAll[3]), linetype=2, size=.2) +   
+  
+  coord_cartesian(ylim = c(0-0.02, .4), xlim = c(-.0002, .082)) +
+  xlab(expression(paste("Phylogenetic distance (", d[ij], ")"))) +
+  ylab("Correlation") +
+  theme_bw() +
+  
+  facet_grid(factor(tauQuantileType,
+                    levels = tauQTypes,
+                    labels = tauQNames)~.) +
+  geom_label(data = corrTableSizes[tauQuantileType %in% tauQTypes],
+            inherit.aes = FALSE,
+            aes(label = paste0(ifelse(Nbins != 1,
+                                      paste0(Nbins, " strata; "),
+                                      ""),
+                               ifelse(Nbins == 1,
+                                      paste0("All ", K, " PPs"),
+                                      paste0(#K, " CPPs; ",
+                                             "average ",
+                                             K2, " PPs/stratum"))),
+                x = 0, y = .4, hjust = "left", vjust = "top"),
+            color = "black", size = 3) +
+  scale_color_manual(
+    values = c(`Original`="black", `PMM simulation`="darkred", `POUMM simulation`="green", `Original ranks`="magenta"), 
+    name = '',
+    labels = expression(
+      paste("UK tree, ", lg(spVL), " (", r[A],")"), 
+      paste("UK tree, ", lg(spVL), " (", r[Sp],")"), 
+      paste("UK tree, ", "PMM simulations (", r[A], ")"), 
+      paste("UK tree, ", "POUMM simulations (", r[A], ")"))) +
+  theme(legend.position = "none", #c(0.86, .9), 
+        legend.title = element_text(size=0),
+        legend.text.align = 0, 
+        legend.text = element_text(size=8))
+
+pp_copies <- rbindlist(list(
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=Atau]
+    pp_copy[, tauQT:=Atau]
+    pp_copy[, tauQuantileType:="All"]
+    pp_copy
+  },
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=Mtau]
+    pp_copy[, tauQT:=Mtau]
+    pp_copy[, tauQuantileType:="Medians"]
+    pp_copy
+  },
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=Qtau]
+    pp_copy[, tauQT:=Qtau]
+    pp_copy[, tauQuantileType:="Quartiles"]
+    pp_copy
+  },
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=qutau]
+    pp_copy[, tauQT:=qutau]
+    pp_copy[, tauQuantileType:="Quintiles"]
+    pp_copy
+  },
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=Otau]
+    pp_copy[, tauQT:=Otau]
+    pp_copy[, tauQuantileType:="Octiles"]
+    pp_copy
+  },
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=Dtau]
+    pp_copy[, tauQT:=Dtau]
+    pp_copy[, tauQuantileType:="Deciles"]
+    pp_copy
+  },
+  {
+    pp_copy <- copy(pp)
+    pp_copy[, tauMean:=mean(tau), by=Vtau]
+    pp_copy[, tauQT:=Vtau]
+    pp_copy[, tauQuantileType:="Ventiles"]
+    pp_copy
+  }
+))
+
+pp_copies[, tauQuantileType:=factor(tauQuantileType, 
+                                    levels=c("All", "Medians", "Quartiles", "Quintiles", "Octiles", "Deciles", "Ventiles"))]
+plot_z <- ggplot(pp_copies) + 
+  geom_boxplot(aes(x=tauMean, y=z, group=tauQT), width=.0015)  + scale_x_continuous(name=expression(paste("Phylogenetic distance (", d[ij], ")")), limits = c(-0.0008, 0.082)) + 
+  ylab(expression(lg(spVL))) +
+  facet_grid(tauQuantileType~.) +
+  theme_bw()
+
+cowplot::plot_grid(plot_z, plot_corr,  nrow = 1, ncol = 2, labels = c("A", "B"))
+```
+
+## Fig 6: Compare spVL-studies
+
+```{r spVL-studies, eval=TRUE, results="hide", echo=FALSE}
+spVL.studies <- data.table(
+  id=1:26,
+  refInManuscript=c(1, 2, 3, 3, 4, 4, 5, 6,
+                    7, 7, 8, 8, 8, 8, 9, 
+                    
+                    10, 10, 11, 11,
+                    
+                    12, 12,
+                    12,
+                    12,
+                    12, 12, 12),
+  author=c('Tang et al.', 'Hecht et al.', 'Hollingsworth et al.', 'Hollingsworth et al.', 'Van der Kuyl et al.', 'Van der Kuyl et al.',  'Lingappa et al.', 'Yue et al.',
+           'Alizon et al.', 'Alizon et al.', 'Shirreff et al.', 'Shirreff et al.', 'Shirreff et al.', 'Shirreff et al.', 'Hodcroft et al.',
+           
+           'Blanquart et al.', 'Blanquart et al.', 'Bertels et al.', 'Bertels et al.',
+           
+           'This work', 'This work',
+           'This work',
+           'This work',
+           'This work', 'This work', 'This work'),
+  year=c(2004, 2010, 2010, 2010, 2010, 2010, 2013, 2013,
+         2010, 2010, 2013, 2013, 2013, 2013, 2014, 
+         
+         2017, 2017, 2017, 2017,
+         
+         2017, 2017,
+         2017,
+         2017,
+         2017, 2017, 2017),
+  cohort=c('Zambia', 'n.a.', 'Uganda', 'Uganda', 'Netherlands', 'Netherlands',
+           'Africa', 'Zambia',
+           'Swiss All Liberal', 'Swiss MSM Liberal', 'Swiss All Liberal', 'Swiss MSM Liberal', 'Swiss All Liberal', 'Swiss MSM Liberal', 'UK', 
+           
+           'BEEHIVE (SPVL)', 'BEEHIVE (SPVL)', 'Swiss (unadjusted)', 'Swiss (unadjusted)',
+           
+           'UK', 'UK',
+           'UK',
+           'UK', 
+           'UK', 'UK', 'UK'),
+  subtype=c('C', 'n.a.', 'A,D,C', 'A,D,C', 'n.a.', 'n.a.', 'diverse', 'C',
+            'B', 'B', 'B', 'B', 'B', 'B', 'B', 
+            
+            'B', 'B', 'B', 'B',
+            
+            'B', 'B',
+            'B',
+            'B',
+            'B','B', 'B'), 
+  N=c(230, 47, 194, 58, 40, 72, 141, 195,
+      661, 404, 661, 404, 661, 404, 8483, 
+      
+      1581, 1581, 2024, 2024,
+      
+      3834, 232,
+      8483,
+      8483,
+      232, 3834, 3834),
+  method=c("r*'[DR, early ('*d[rcp]<9~months*')]'", "r*'[DR, early]'", "R[adj]^2*'[DR, early, mod. support]'", "R[adj]^2*'[DR, early, strong support]'", "r*'[DR, late (stage III and IV)]'", "r*'[DR, early (stage I and II)]'", "b*'[DR, early, known couples]'", "b*'[DR, early, known couples]'",
+           "K", "K", "lambda", "lambda", "PMM/ReML", "PMM/ReML", "PMM/ReML",
+           
+           "PMM", "POUMM", "PMM", "POUMM",
+           
+           "r[list(A)]*'[PPs]'", "r[list(A,10^{-4})]*'[CPPs]'",
+           "PMM*'[All tips]'",
+           "POUMM*'[All tips]'",
+           "r[list(Sp,10^{-4})]*'[CPPs]'", "r[list(Sp,0,lin)]*'[PPs]'", "r[list(Sp,tau)]*'[PPs]'"),
+  mean=c(0.21, 0.55, 0.23, 0.37, 0.06, 0.29, 0.44, .26,
+         0.002, 0.09, 0.105, 0.15, 0.06, 0.01, 0.06,
+         
+         0.13, 0.21, 0.12, 0.26,
+         
+         0.11, 0.16,
+         0.06,
+         0.20,
+         0.22, 0.18, 0.11),
+  P=c(0.03, NA, 0.006, 0.036, NA, NA, NA, NA,
+      0.305, 0.038, 0.016, 0.025, NA, NA, NA,
+      
+      NA, NA, NA, NA,
+      
+      NA, NA, 
+      NA,
+      NA,
+      NA, NA, NA),
+  CI95.lower=c(NA, 0.19, NA, NA, 0, 0, 0.19, 0.08,
+               NA, NA, NA, NA, NA, NA, 0.03,
+               
+               0.05, 0.1, 0.02, 0.08,
+               
+               0.08, 0.01,
+               0.02, 
+               0.13,
+               0.03, 0.11, 0.06),
+  CI95.upper=c(NA, 0.78, NA, NA, 0.39, 0.65, 0.69, 0.44,
+               NA, NA, NA, NA, NA, NA, 0.09, 
+               
+               0.2, 0.36, 0.28, 0.43,
+               
+               0.14, 0.30,
+               0.09,
+               0.29,
+               0.40, 0.25, 0.15),
+  color=c('cadetblue4', 'cadetblue4', 'cadetblue3', 'cadetblue4', 'cadetblue1', 'cadetblue4', 'cadetblue4', 'cadetblue4',
+          'brown', 'brown', 'brown', 'brown', 'brown', 'brown', 'brown',
+          
+          'brown', 'green', 'brown', 'green', 
+          
+          'cadetblue1', 'cadetblue4',
+          'brown',
+          'green',
+          'cadetblue4', 'cadetblue4', 'cadetblue1')
+)
+spVL.studies[, 
+          name.args:=list(x=sapply(id, function(i) {
+            a=author[i]
+            y=year[i]
+            r=refInManuscript[i]
+            coh=cohort[i]
+            n=N[i]
+            m=method[[i]]
+            sub=subtype[[i]]
+            paste0("'", coh, "; ", sub, "; N=", n, "; '~", m, "~''", ifelse(!is.na(r), paste0("^{", r, "}"), "")) 
+            }))]
+
+setkey(spVL.studies, id)
+```
+
+```{r Fig6, echo=FALSE, eval=TRUE, fig.width=4.82, fig.height=6}
+par(mfrow=c(2,1))
+par(mai=c(0.4, 3.2, 0.2, 0.05))
+setParCex()
+
+par(las=1)
+
+id.unbiased <- c(1, 2, 3, 4, 6, 7, 8, 17, 19, 21, 24, 25, 23)
+id.biased <- c(5, 9, 11, 13, 15, 16, 18, 20, 26, 22)
+
+spVL.studies[list(rev(id.unbiased)), {
+  plot(c(), c(), xlim=c(0, 1), ylim=c(0, length(id)), xlab=expression(H^2), ylab='', yaxt='n', frame.plot=FALSE)
+  grid(ny=NA)
+  
+  barplot(mean, width=0.8, space=0.25, horiz=TRUE, col=color, border=NA,
+          names.arg=sapply(name.args, function(.) parse(text=.)), add=TRUE)
+  mtext("A", font=2, side=3, at=-2.14, cex=1.4, line=0.6)
+  mtext("Cohort;  Subtype;  N;  Method[data, filter]", font=2, side=3, at=-2.0, adj=0, cex=1, line=0.6)
+  
+  for(i in 1:length(id)) {
+    if(!is.na(CI95.lower[i])) {
+      segments(x0=CI95.lower[i], y0=i-0.4, x1=CI95.upper[i], y1=i-.4, lty=1, lwd=1)
+      segments(x0=CI95.lower[i], y0=i-0.4+0.1, x1=CI95.lower[i], y1=i-.4-0.1, lty=1, lwd=1)
+      segments(x0=CI95.upper[i], y0=i-0.4+0.1, x1=CI95.upper[i], y1=i-.4-0.1, lty=1, lwd=1)
+    } else if(!is.na(P[i])) {
+      text(x=mean[i]+0.15, y=i-0.4, labels=paste0('P=', round(P[i], 3)), cex=1.6)
+    } else {
+      text(x=mean[i]+0.15, y=i-0.4, labels=paste0('P=n.a.'), cex=1.6)
+    }
+  }
+} ]
+
+spVL.studies[list(rev(id.biased)), {
+  plot(c(), c(), xlim=c(0, 1), ylim=c(0, length(id)), xlab=expression(H^2), ylab='', yaxt='n', frame.plot=FALSE)
+  grid(ny=NA)
+  
+  barplot(mean, width=0.8, space=0.25, horiz=TRUE, col=color, border=NA,
+          names.arg=sapply(name.args, function(.) parse(text=.)), add=TRUE)
+  mtext("B", font=2, side=3, at=-2.14, cex=1.4, line=0.6)
+  mtext("Cohort;   Subtype;   N;  Method[data, filter]", font=2, side=3, at=-2.0, adj=0, cex=1, line=0.6)
+  
+  for(i in 1:length(id)) {
+    if(!is.na(CI95.lower[i])) {
+      segments(x0=CI95.lower[i], y0=i-0.4, x1=CI95.upper[i], y1=i-.4, lty=1, lwd=1)
+      segments(x0=CI95.lower[i], y0=i-0.4+0.1, x1=CI95.lower[i], y1=i-.4-0.1, lty=1, lwd=1)
+      segments(x0=CI95.upper[i], y0=i-0.4+0.1, x1=CI95.upper[i], y1=i-.4-0.1, lty=1, lwd=1)
+    } else if(!is.na(P[i])) {
+      text(x=mean[i]+0.15, y=i-0.4, labels=paste0('P=', round(P[i], 3)), cex=1.6)
+    } else {
+      text(x=mean[i]+0.15, y=i-0.4, labels=paste0('P=n.a.'), cex=1.6)
+    }
+  }
+} ]
+text(x = grconvertX(0.5, from = "npc"),  
+       y = grconvertY(0.5, from = "npc"), 
+        labels = " NEGATIVELY BIASED", 
+        cex = 2.6, font = 2, 
+        col = rgb(1, 0, 0, .2), 
+        srt = 55) 
+```
+
+# Embedding fonts in pdf-figures
+The embedding of the fonts didn't work smoothly. A solution that seems to work better is to drag-drop the figure in an MS powerpoint and then to right-click the image object and save as image (chosing .pdf as a format).
+```{r embed-fonts, eval=FALSE, echo=TRUE, results="hide", warning=FALSE, message=FALSE} 
+library(extrafont)
+
+#font_import()
+# To embed greek letter-fonts you also need the fontcm package
+#font_install("fontcm")
+loadfonts()
+
+dir <- "GenerateFigures_files/figure-latex/"
+figs <- c("Fig2C-F-1", "Fig3-1", "Fig4-1", "Fig5-1", "Fig6-1", "plot-random-distribution-1", "plot-random-distribution-2", "FigS1-1", "FigS2-1", "FigS3-1", "FigS4-1", "FigS5-1", "FigS6-1", "FigS7-1", "FigS8-1")
+
+figsInLatex <- c(NA, "Fig3",  "Fig4", "Fig5", "Fig6", NA, NA, "FigS1", "FigS2", "FigS3", "FigS4", "FigS5", "FigS6", "FigS7", "FigS8")
+
+ext <- ".pdf"
+
+for(i in 1:length(figs)) {
+  infile <- paste0(dir, figs[i], ext)
+  outfile <- paste0(dir, figs[i], "-embed", ext)
+  print(infile)
+  embed_fonts(infile, outfile = outfile)
+    
+  # store the figures with embedded fonts in the directory containing the manuscript latex file
+    
+  if(!is.na(figsInLatex[i])) {
+    file.copy(outfile, paste0("../MS/", figsInLatex[i], ext), overwrite = TRUE)
+  }
+} 
+```
