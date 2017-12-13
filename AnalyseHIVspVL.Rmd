@@ -3,7 +3,7 @@ output:
   bookdown::pdf_document2:
     keep_tex: true
     latex_engine: pdflatex
-title: "Heritability Analysis of the UK data using the package patherit"
+title: "A Practical Guide to Estimating the Heritability of Pathogen Traits - Heritability Analysis of the UK data"
 author: Venelin Mitov
 tables: true
 ---
