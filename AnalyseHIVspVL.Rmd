@@ -3,7 +3,7 @@ output:
   bookdown::pdf_document2:
     keep_tex: true
     latex_engine: pdflatex
-title: "A Practical Guide to Estimating the Heritability of Pathogen Traits - Heritability Analysis of the UK data"
+title: "A Practical Guide to Estimating the Heritability of Pathogen Traits - R Scripts for Estimating the Heritability Analysis of lg(spVL)"
 author: Venelin Mitov
 tables: true
 ---
