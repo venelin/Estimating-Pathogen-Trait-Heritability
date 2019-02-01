@@ -25,6 +25,7 @@ At the time of writing this documentation, all of the above packages were availa
 this directory. To do this, execute the following commands within R:
 
 install.packages('patherit_0.4.tar.gz', repos=NULL, type='source')
+install.packages('toyepidemic-0.1.0.tar.gz', repos=NULL, type='source')
 install.packages('benchtable_1.0.tar.gz', repos=NULL, type='source')
 
 NOTE: Included in the patherit package is the version of the POUMM package used by all R-scripts.
