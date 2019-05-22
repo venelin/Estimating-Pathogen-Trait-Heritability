@@ -49,14 +49,14 @@ To generate the figures you first need to extract the archive-file 2018-MitovAnd
 
 To analyse the HIV-data, currently, you need a permission for accessing the data
 from the UK drug resistance database. I recommend contacting the database at
-mrcctu.hivrdb@ucl.ac.uk (CC: venelin.mitov@bsse.ethz.ch) and request the phylogeny
+mrcctu.hivrdb at ucl.ac.uk (CC: vmitov at gmail.com) and request the phylogeny
 and spVL data published in Hodcroft et al. 2014 (see article main text for a full
 reference). Once you obtain the permission from the UK-drug resistance database, 
-please, write an e-mail to vmitov@gmail.com or tanja.stadler@bsse.ethz.ch. Then, 
+please, write an e-mail to vmitov at gmail.com or tanja.stadler at bsse.ethz.ch. Then, 
 I or Tanja will send you a a file called HIV.zip that should be extracted in the 
 subdirectory DATA of this directory.
 
 Then, you will be able to execute the commands in the R-script AnalyseHIVspVL.Rmd, 
 as well as generate the HIV-data figures in GenerateFigures.Rmd.
 
-For questions, please write to vmitov@gmail.com or to tanja.stadler@bsse.ethz.ch.
+For questions, please write to vmitov at gmail.com or to tanja.stadler at bsse.ethz.ch.
