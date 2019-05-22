@@ -43,8 +43,7 @@ SimulateToyModel.Rmd (chunks initiate-data, simulate-and-fit-POUMM, collect-resu
 
 ## 4. Generating figures for the toy-model simulations
 
-All figures except Fig. S1 and S2 can be generated without performing step 3. All
-that needs to be done is executing the corresponding chunks in the file GenerateFigures.Rmd.
+To generate the figures you first need to extract the archive-file 2018-MitovAndStadler-MBE-SimulationData.zip in the root directory of a working copy of this git repository. Due to its large file size (more than 7Gb), this file is not stored on github, but you can contact the corresponding author (Venelin Mitov) or the the last autor (Tanja Stadler) to get access to this file. This file should extracted in this directory prior to executing the chunks in this script. Then, all that needs to be done is executing the corresponding chunks in the file GenerateFigures.Rmd.
 
 ## 5. Analysis of HIV-data
 
