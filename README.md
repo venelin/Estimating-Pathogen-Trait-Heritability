@@ -14,14 +14,14 @@ This repository contains the R-packages (not including 3rd party dependencies) a
 All of this R-code was executed on R version 3.2.4 (2016-03-10) running on
 x86_64-apple-darwin13.4.0 (64-bit). In addition, the toy-model simulations and ML fits of the POUMM and ANOVA-CPP methods were executed on the Brutus high-performance cluster at ETH Zurich (https://www1.ethz.ch/id/services/list/comp_zentral/cluster/index_EN).
 
-## Third party dependencies needed for running the scripts
+## 1. Third party dependencies needed for running the scripts
 In order to run the R-scripts you need to install the following dependencies:
 xtable, knitr, rmarkdown, ape, coda, data.table, adaptMCMC and Rmpfr.
 
 At the time of writing this documentation, all of the above packages were available on CRAN.
 
-## Installing in-hose developed packages
-2You have to install the patherit and benchtable packages from their source-bundles included in
+## 2. Installing in-house developed packages
+You have to install the patherit and benchtable packages from their source-bundles included in
 this directory. To do this, execute the following commands within R:
 
 install.packages('patherit_0.4.tar.gz', repos=NULL, type='source')
@@ -32,29 +32,32 @@ NOTE: Included in the patherit package is the version of the POUMM package used 
 Since, the interface of the current version of the POUMM package has numerous changes w.r.t.
 patherit v0.4, the R-scripts would fail to run with the newest POUMM version.
 
-## Simulations of the toy-model
+## 3. Simulations of the toy-model
 To simulate the toy-model from scratch, you need to run individual chunks manually in the
 SimulateToyModel.Rmd - file. This is a computationally expensinve and long-running task, which
 needs the generation of benchtable shell-scripts, upload of these scripts together with
-initialized data-files to a parallel cluster, execute parallel jobs, and gather results back
-on a local computer,to analyze the results. You will need to install the packages patherit and
+initialized data-files to a parallel cluster, execute parallel jobs, and gather result-files back
+on a local computer, in order to analyze the results. You will need to install the packages patherit and
 benchtable on the remote cluster as well. Read the instructions and R-code in the file
 SimulateToyModel.Rmd (chunks initiate-data, simulate-and-fit-POUMM, collect-results).
 
-## Generating figures for the toy-model simulations
+## 4. Generating figures for the toy-model simulations
 
 All figures except Fig. S1 and S2 can be generated without performing step 3. All
 that needs to be done is executing the corresponding chunks in the file GenerateFigures.Rmd.
 
-## Analysis of HIV-data
+## 5. Analysis of HIV-data
 
 To analyse the HIV-data, currently, you need a permission for accessing the data
 from the UK drug resistance database. I recommend contacting the database at
 mrcctu.hivrdb@ucl.ac.uk (CC: venelin.mitov@bsse.ethz.ch) and request the phylogeny
 and spVL data published in Hodcroft et al. 2014 (see article main text for a full
-reference). Once you obtain the permission from the UK-drug resistance database, please, write an e-mail to vmitov@gmail.com or tanja.stadler@bsse.ethz.ch. Then, I or Tanja will send you a a file called HIV.zip that should be extracted in the subdirectory DATA of this directory.
+reference). Once you obtain the permission from the UK-drug resistance database, 
+please, write an e-mail to vmitov@gmail.com or tanja.stadler@bsse.ethz.ch. Then, 
+I or Tanja will send you a a file called HIV.zip that should be extracted in the 
+subdirectory DATA of this directory.
 
-Then, you will be able to execute the commands in the R-script AnalyseHIVspVL.Rmd, as well as generate
-the HIV-data figures in GenerateFigures.Rmd.
+Then, you will be able to execute the commands in the R-script AnalyseHIVspVL.Rmd, 
+as well as generate the HIV-data figures in GenerateFigures.Rmd.
 
 For questions, please write to vmitov@gmail.com or to tanja.stadler@bsse.ethz.ch.
